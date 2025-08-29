@@ -30,6 +30,7 @@ class FitnessEvaluator:
 
                 current_dist = 0
                 last_node = 0
+                route_demand = 0
                 for c_id in sub_route:
                     # look at the demand for in the index (id - 1)
                     route_demand += self.problem.customer_demands[c_id - 1]
@@ -56,6 +57,8 @@ class FitnessEvaluator:
             end = start
         
         routes.reverse()
+
+        print(f"DEBUG: Splitter found {len(routes)} routes. vehicle limit is {num_vehicles}.")
 
         if len(routes) > num_vehicles:
             return float('inf'), []

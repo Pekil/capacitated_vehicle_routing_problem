@@ -29,7 +29,8 @@ def generate_scenario(
         "num_customers": num_customers,
         "depot": depot,
         "customers": customers,
-        "customer_demands": c_demands
+        "customer_demands": c_demands,
+        "vehicle_capacity": vehicle_capacity
     }
 def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers) -> List[int]:
     tot_fleet_cap = num_vehicles * vehicle_capacity
@@ -38,8 +39,8 @@ def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers) -
     tot_added = 5 * num_customers
     while not filled:
         for i in range(num_customers):
-            addition: int = random.randint(1, 10) ## fill a small random amount for each pass of the array
-            if tot_fleet_cap >= tot_added + addition:
+            addition: int = random.randint(1, 25) ## fill a small random amount for each pass of the array
+            if tot_fleet_cap * 0.5 >= tot_added + addition:
                 c_demands[i] += addition
                 tot_added += addition
             else:
