@@ -1,16 +1,18 @@
 import random
 import json
 import os
+from typing import List
 
 def generate_scenario(
     name,
     num_vehicle_range,
     num_customer_range,
-    coord_range=(0,100)
+    coord_range=(0,100),
+    vehicle_capacity=100 ## a vehicle can store 100 "goods" 
 ):
     num_vehicles = random.randint(*num_vehicle_range)
     num_customers = random.randint(*num_customer_range)
-    
+
     # this is fixed in the middle, the random locations of customers give enough variation
     depot = (50,50)
 
@@ -20,14 +22,31 @@ def generate_scenario(
         x = random.uniform(coord_range[0], coord_range[1])
         y = random.uniform(coord_range[0], coord_range[1])
         customers.append((x,y))
-    
+    c_demands = _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers)
     return {
         "name": name,
         "num_vehicles": num_vehicles,
         "num_customers": num_customers,
         "depot": depot,
-        "customers": customers
+        "customers": customers,
+        "customer_demands": c_demands
     }
+def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers) -> List[int]:
+    tot_fleet_cap = num_vehicles * vehicle_capacity
+    c_demands = [5] * num_customers ## ensure each customer has atleast some demand as a baseline
+    filled = False # checker
+    tot_added = 5 * num_customers
+    while not filled:
+        for i in range(num_customers):
+            addition: int = random.randint(1, 10) ## fill a small random amount for each pass of the array
+            if tot_fleet_cap >= tot_added + addition:
+                c_demands[i] += addition
+                tot_added += addition
+            else:
+                filled = True
+                break
+    return c_demands
+        
 
 def generate_instances():
     
