@@ -9,7 +9,9 @@ class ProblemInstance:
         self.depot = scenario_data["depot"]
         self.customers = scenario_data["customers"]
         self.num_customers = scenario_data["num_customers"]
-
+        self.vehicle_capacity = scenario_data["vehicle_capacity"]
+        self.customer_demands = scenario_data["customer_demands"]
+        self.toughness = scenario_data["fleet_utilization"]
         self.all_locations = [self.depot] + self.customers
         ## using a distance matrix because lookup is faster and 
         # computationally cheaper than calculating on the fly

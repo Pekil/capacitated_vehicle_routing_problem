@@ -1,6 +1,74 @@
-Welcome to our solution to the Vehicle Routing Problem.
+# Vehicle Routing Problem (VRP) using a Genetic Algorithm
 
-This is the README. 
+This project provides a framework for solving the Capacitated Vehicle Routing Problem (CVRP) using a Genetic Algorithm. It includes tools for generating complex problem instances, evaluating solutions, and logging experimental results in a structured way.
 
-Instructions on how to use our program:
-1. lalal
+## Setup and Installation
+
+This project requires Python 3.x.
+
+1.  **Create and activate a virtual environment:**
+    It is highly recommended to use a virtual environment. The standard name for this is `.venv`, but as requested, the instructions use `.VIRTUAL_ENV`.
+
+    ```bash
+    # For Windows
+    python -m venv .VIRTUAL_ENV
+    .\.VIRTUAL_ENV\Scripts\activate
+
+    # For macOS/Linux
+    python -m venv .VIRTUAL_ENV
+    source .VIRTUAL_ENV/bin/activate
+    ```
+
+2.  **Install requirements:**
+    Install the necessary Python packages from the `requirements.txt` file.
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+    > **Note:** If a `requirements.txt` file does not exist, you can create one after installing the necessary packages (`matplotlib`, `numpy`) with the command: `pip freeze > requirements.txt`.
+
+## Usage
+
+The project is managed through the command-line interface in `main.py`.
+
+### Recommended Workflow
+
+1.  **Reset Environment (Optional):**
+    If you want to start from scratch, this command will delete all generated scenario files and log data.
+    ```bash
+    python main.py -reset
+    ```
+
+2.  **Generate Problem Sets:**
+    This command creates the `scenario-*.json` files in the `data/` directory. These files define the problem instances (number of vehicles, customer locations, demands, etc.).
+    ```bash
+    python main.py -generate
+    ```
+
+3.  **Check Status:**
+    Running the script without any arguments will show the current state of the environment: which scenarios have been generated and which have been initialized.
+    ```bash
+    python main.py
+    ```
+
+4.  **Initialize Generation 0:**
+    This is the main first step. It loads the scenario files, creates an initial random population of a given size, evaluates every individual, and logs the results (best/worst/avg fitness) to a `.csv` file for Generation 0.
+    ```bash
+    python main.py -init -pop 500
+    ```
+    *(You can replace `500` with your desired population size.)*
+
+5.  **Run the GA (Future Step):**
+    This command is reserved for running the full genetic algorithm for multiple generations.
+    ```bash
+    python main.py -run
+    ```
+    *(Currently returns "under development".)*
+
+### All Commands
+
+*   `python main.py`: Shows the status of all problem sets.
+*   `python main.py -generate`: Creates the scenario `.json` files.
+*   `python main.it -init -pop <size>`: Creates and evaluates an initial population of `<size>`.
+*   `python main.py -run`: (Placeholder) Runs the full GA.
+*   `python main.py -reset`: **Warning:** Deletes all generated data. This cannot be undone.
