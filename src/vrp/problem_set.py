@@ -3,26 +3,43 @@ import json
 import os
 from typing import List
 
+# Updated to be a module-level constant
+scenario_definitions = {
+    's-1': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
+    's-2': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
+    'm-1': {"num_vehicles_range": (11, 25), "num_customers_range": (15, 30)},
+    'm-2': {"num_vehicles_range": (11, 25), "num_customers_range": (15, 30)},
+    'l-1': {"num_vehicles_range": (26, 50), "num_customers_range": (20, 50)},
+    'l-2': {"num_vehicles_range": (26, 50), "num_customers_range": (20, 50)}
+}
+
 def generate_scenario(
     name,
     num_vehicle_range,
     num_customer_range,
     coord_range=(0,100),
-    vehicle_capacity=100 ## a vehicle can store 100 "goods" 
+    vehicle_capacity=100
 ):
+    # ... (rest of the function is unchanged)
     num_vehicles = random.randint(*num_vehicle_range)
     num_customers = random.randint(*num_customer_range)
 
-    # this is fixed in the middle, the random locations of customers give enough variation
     depot = (50,50)
 
-    ## this generates random positions for the customers within the bounds of the grid 0,100
     customers = []
     for i in range(num_customers):
         x = random.uniform(coord_range[0], coord_range[1])
         y = random.uniform(coord_range[0], coord_range[1])
         customers.append((x,y))
-    c_demands = _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers)
+
+    c_demands, fleet_utilization = _randomize_customer_demands(
+        num_vehicles,
+        vehicle_capacity,
+        num_customers
+    )
+
+    packing_index = _calculate_packing_index(c_demands, num_vehicles, vehicle_capacity)
+
     return {
         "name": name,
         "num_vehicles": num_vehicles,
@@ -30,43 +47,51 @@ def generate_scenario(
         "depot": depot,
         "customers": customers,
         "customer_demands": c_demands,
-        "vehicle_capacity": vehicle_capacity
+        "vehicle_capacity": vehicle_capacity,
+        "fleet_utilization": fleet_utilization,
+        "packing_index": packing_index
     }
-def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers) -> List[int]:
+
+# ... (_randomize_customer_demands, _calculate_packing_index are unchanged)
+def _calculate_packing_index(customer_demands, num_vehicles, vehicle_capacity):
+    num_customers = len(customer_demands)
+    if num_vehicles == 0 or num_customers == 0:
+        return 0.0
+    avg_stops_per_vehicle = num_customers / num_vehicles
+    ideal_demand_per_customer = (vehicle_capacity * 0.9) / avg_stops_per_vehicle
+    total_deviation = sum(abs(demand - ideal_demand_per_customer) for demand in customer_demands)
+    packing_index = total_deviation / num_customers
+    return packing_index
+
+def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers):
     tot_fleet_cap = num_vehicles * vehicle_capacity
-    c_demands = [5] * num_customers ## ensure each customer has atleast some demand as a baseline
-    filled = False # checker
+    target_utilization = random.uniform(0.70, 0.90)
+    target_demand = tot_fleet_cap * target_utilization
+    c_demands = [5] * num_customers
     tot_added = 5 * num_customers
+    filled = False
     while not filled:
+        high_demand_customers = sum(1 for d in c_demands if d > vehicle_capacity / 2)
+        if high_demand_customers > num_vehicles:
+            break
         for i in range(num_customers):
-            addition: int = random.randint(1, 25) ## fill a small random amount for each pass of the array
-            if tot_fleet_cap * 0.5 >= tot_added + addition:
-                c_demands[i] += addition
-                tot_added += addition
-            else:
+            addition: int = random.randint(1, 25)
+            if vehicle_capacity < c_demands[i] + addition: continue
+            if tot_fleet_cap*0.9 < tot_added + addition: continue
+            tot_added += addition
+            c_demands[i] += addition
+            if target_demand < tot_added:
                 filled = True
                 break
-    return c_demands
-        
+    actual_utilization = tot_added / tot_fleet_cap
+    return c_demands, actual_utilization
+
 
 def generate_instances():
-    
-    ## i name the instances after their size category (s,m and l) and 1 or 2
-    scenario_definitions = {
-        's-1': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
-        's-2': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
-        'm-1': {"num_vehicles_range": (11, 25), "num_customers_range": (15, 30)},
-        'm-2': {"num_vehicles_range": (11, 25), "num_customers_range": (15, 30)},
-        'l-1': {"num_vehicles_range": (26, 50), "num_customers_range": (20, 50)},
-        'l-2': {"num_vehicles_range": (26, 50), "num_customers_range": (20, 50)}
-    }
-
     scenarios = {}
-    ## loop the scenario definitions and load or create
     for name, params in scenario_definitions.items():
         file_path = "data/" + f"scenario-{name}.json"
 
-        ## load the datasets if they already exist
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
                 scenarios[name] = json.load(f)
@@ -80,6 +105,4 @@ def generate_instances():
             with open(file_path, "w") as f:
                 json.dump(new_scenario, f, indent=4)
             scenarios[name] = new_scenario
-        
     return scenarios
-
