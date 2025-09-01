@@ -18,23 +18,25 @@ class FitnessEvaluator:
     # we chose the optimal split, using "dynamic programming" to find the optimal way to split
     # this invovles finding the 'fittest' split before running he final fitness evaluation
     def _optimal_split(self, chromosome, num_vehicles):
-        # example given 5 customers and 2 vehicles
-        n: int = len(chromosome) # 5
+        n: int = len(chromosome)                    # lets say n = 5
         C: List[float]= [float('inf')] * (n + 1)    # ['inf','inf','inf','inf','inf','inf']
         P: List[int] = [0] * (n + 1)                # [0,0,0,0,0,0]
         C[0] = 0                                    # [0,'inf','inf','inf','inf','inf']
 
         for i in range(1, n + 1): # check best for serving 1 up to and including n locatins
-            for j in range(i): # for a given route size i, check the cost of  
+            for j in range(i):
+                # extract sub route from indexes j to i
                 sub_route = chromosome[j:i] 
-
                 current_dist = 0
                 last_node = 0
                 route_demand = 0
+
                 for c_id in sub_route:
-                    # look at the demand for in the index (id - 1)
+                    # add customer demand from customer at given index
                     route_demand += self.problem.customer_demands[c_id - 1]
+                    # increment distance from last node to given customer id
                     current_dist += self.problem.get_distance(last_node, c_id)
+                    # update last node to given customer id
                     last_node = c_id 
                 current_dist += self.problem.get_distance(last_node, 0) # add the distance back to depot
 
@@ -42,6 +44,8 @@ class FitnessEvaluator:
                 if route_demand > self.problem.vehicle_capacity:
                     current_dist = float('inf')
                 
+                # if cost of best route up to J + cost of this route is less than
+                # the  
                 if C[j] + current_dist < C[i]:
                     C[i] = C[j] + current_dist
                     P[i] = j 

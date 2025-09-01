@@ -3,6 +3,9 @@ import os
 import argparse
 import csv
 import shutil
+import json
+
+# random comment
 
 # Updated import
 from src.vrp.problem_set import generate_instances, scenario_definitions
@@ -88,9 +91,37 @@ def handle_init(pop_size):
 
     print("\n--- Initialization complete. ---")
 
-def handle_run():
-    print("GA run mode is under development.")
+def handle_run(scenario_name):
+    print("--- Running GA scenario: {scenario_name} ---")
 
+    gen0_path = os.path.join("data", "generations", scenario_name, "gen-0.csv")
+    if not os.path.exists(gen0_path):
+        print("Please run the init first")
+        return
+    
+    json_path = os.path.join("data", f"scenario-{scenario_name}.json")
+    if not os.path.exists(json_path):
+        print("Please run the generate first")
+        return
+    
+    with open(json_path, 'r') as f:
+        scenario_data = json.load(f)
+    
+    problem = ProblemInstance(scenario_data)
+
+    population = []
+    with open(gen0_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            chromosome_str = row['chromosome']
+            chromosome = [int(gene) for gene in chromosome_str.split('-')] 
+            Individual = Individual(problem, chromosome=chromosome)
+            population.append(Individual)
+    
+    print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
+    print("Ga run logic will be implemented here.")
+    
+    
 def handle_reset():
     print("--- Resetting VRP Environment ---")
     data_dir = "data"
@@ -120,6 +151,7 @@ def main():
     parser.add_argument('-init', action='store_true', help="Initialize problem sets and create Generation 0 logs.")
     parser.add_argument('-pop', type=int, help="Population size for initialization (used with -init).")
     parser.add_argument('-run', action='store_true', help="Run the Genetic Algorithm (currently under development).")
+    parser.add_argument('-s', type=str, help="Specify scenario name for the run (used with -run): s-1, s-2, m-1, m-2, l-1, l-2")
     parser.add_argument('-reset', action='store_true', help="Remove all generated scenario files and log data.")
 
     args = parser.parse_args()
@@ -132,7 +164,7 @@ def main():
             sys.exit(1)
         handle_init(args.pop)
     elif args.run:
-        handle_run()
+        handle_run(args.s)
     elif args.reset:
         handle_reset()
     else:
