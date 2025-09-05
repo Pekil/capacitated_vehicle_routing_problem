@@ -1,74 +1,92 @@
-# Vehicle Routing Problem (VRP) using a Genetic Algorithm
+# Vehicle Routing Problem (VRP) - Group 9 ACIT 
 
-This project provides a framework for solving the Capacitated Vehicle Routing Problem (CVRP) using a Genetic Algorithm. It includes tools for generating complex problem instances, evaluating solutions, and logging experimental results in a structured way.
+## Overview
+This project solves the Capacitated Vehicle Routing Problem (CVRP) using a Genetic Algorithm (GA). It includes tools to create problem instances, check solutions, and save results.
 
-## Setup and Installation
+## Setup
 
-This project requires Python 3.x.
+### 1. Create a Virtual Environment
+Run these commands to set up a virtual environment:
 
-1.  **Create and activate a virtual environment:**
-    It is highly recommended to use a virtual environment. The standard name for this is `.venv`, but as requested, the instructions use `.VIRTUAL_ENV`.
+#### Linux/macOS:
+```bash
+python3 -m venv .VIRTUAL_ENV
+source .VIRTUAL_ENV/bin/activate
+```
 
-    ```bash
-    # For Windows
-    python -m venv .VIRTUAL_ENV
-    .\.VIRTUAL_ENV\Scripts\activate
+#### Windows:
+```bash
+python -m venv .VIRTUAL_ENV
+.\.VIRTUAL_ENV\Scripts\activate
+```
 
-    # For macOS/Linux
-    python -m venv .VIRTUAL_ENV
-    source .VIRTUAL_ENV/bin/activate
-    ```
+### 2. Install Dependencies
+Install the required Python packages:
+```bash
+pip install -r requirements.txt
+```
 
-2.  **Install requirements:**
-    Install the necessary Python packages from the `requirements.txt` file.
+## How to Use
 
-    ```bash
-    pip install -r requirements.txt
-    ```
-    > **Note:** If a `requirements.txt` file does not exist, you can create one after installing the necessary packages (`matplotlib`, `numpy`) with the command: `pip freeze > requirements.txt`.
+### Commands
 
-## Usage
+#### 1. Reset Environment
+Deletes all created data:
+```bash
+python main.py -reset
+```
 
-The project is managed through the command-line interface in `main.py`.
+#### 2. Generate Problem Sets
+Creates scenario files in the `data/` folder:
+```bash
+python main.py -generate
+```
 
-### Recommended Workflow
+#### 3. Check Status
+Shows the current state of the environment:
+```bash
+python main.py
+```
 
-1.  **Reset Environment (Optional):**
-    If you want to start from scratch, this command will delete all generated scenario files and log data.
-    ```bash
-    python main.py -reset
-    ```
+#### 4. Initialize Population
+Creates an initial population for all scenarios:
+```bash
+python main.py -init -pop <size>
+```
+Replace `<size>` with the number of individuals you want.
 
-2.  **Generate Problem Sets:**
-    This command creates the `scenario-*.json` files in the `data/` directory. These files define the problem instances (number of vehicles, customer locations, demands, etc.).
-    ```bash
-    python main.py -generate
-    ```
+#### 5. Run Genetic Algorithm
+Runs the GA for a specific scenario:
+```bash
+python main.py -run -s <scenario-name>
+```
+Replace `<scenario-name>` with the name of the scenario.
 
-3.  **Check Status:**
-    Running the script without any arguments will show the current state of the environment: which scenarios have been generated and which have been initialized.
-    ```bash
-    python main.py
-    ```
+#### 6. Visualize Results
+Shows the results of a scenario:
+```bash
+python main.py -viz -s <scenario-name> -speed <speed>
+```
+Replace `<scenario-name>` with the scenario name and `<speed>` with the animation speed.
 
-4.  **Initialize Generation 0:**
-    This is the main first step. It loads the scenario files, creates an initial random population of a given size, evaluates every individual, and logs the results (best/worst/avg fitness) to a `.csv` file for Generation 0.
-    ```bash
-    python main.py -init -pop 500
-    ```
-    *(You can replace `500` with your desired population size.)*
+## Example Workflow
 
-5.  **Run the GA (Future Step):**
-    This command is reserved for running the full genetic algorithm for multiple generations.
-    ```bash
-    python main.py -run
-    ```
-    *(Currently returns "under development".)*
+1. **Generate Problem Sets:**
+   ```bash
+   python main.py -generate
+   ```
 
-### All Commands
+2. **Initialize Population:**
+   ```bash
+   python main.py -init -pop 100
+   ```
 
-*   `python main.py`: Shows the status of all problem sets.
-*   `python main.py -generate`: Creates the scenario `.json` files.
-*   `python main.it -init -pop <size>`: Creates and evaluates an initial population of `<size>`.
-*   `python main.py -run`: (Placeholder) Runs the full GA.
-*   `python main.py -reset`: **Warning:** Deletes all generated data. This cannot be undone.
+3. **Run GA:**
+   ```bash
+   python main.py -run -s s-1
+   ```
+
+4. **Visualize Results:**
+   ```bash
+   python main.py -viz -s s-1 -speed 200
+   ```
