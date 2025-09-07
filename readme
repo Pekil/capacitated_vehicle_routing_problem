@@ -27,15 +27,6 @@ pip install -r requirements.txt
 ```
 
 ## How to Use
------   IMPORTANT FOR TEACHER!
-- The datasets we used for the task are already generated in the data/ folder. If you want to run the simulation using the same datasets we discuss in the report you can skip the '-reset' and '-generate' step.
-- The only step you need is to run: -init -pop [population-size], and -run -s [dataset-name]
-- NOTE: The '-init' flag will initialize ALL scenarios with that populations size, since we use different pop sizes for different scenarios, you will ned to run -init again before each independet run that might use different
-         population sizes
-- EX: 
-      1. ``python -init -pop 100`` && ``python -run -s s-1`` && ``python -run -s s-2``
-      2. ``python -init -pop 200`` && ``python -run -s m-1`` && ``python -run -s m-2``
-      3. ``python -init -pop 300`` && ``python -run -s l-1`` && ``python -run -s l-2``
 
 ### COMMANDS
 
@@ -67,35 +58,33 @@ Replace `<size>` with the number of individuals you want.
 #### 5. Run Genetic Algorithm
 Runs the GA for a specific scenario:
 ```bash
-python main.py -run -s <scenario-name>
+python main.py -run -s <scenario_name> --gen <generations> --pc <crossover_probability> --pm <mutation_probability>
 ```
-Replace `<scenario-name>` with the name of the scenario.
+- `<scenario_name>`: Name of the scenario (e.g., `s-1`, `m-1`, `l-1`).
+- `<generations>`: Number of generations to run (default: 5000).
+- `<crossover_probability>`: Probability of crossover (default: 0.9).
+- `<mutation_probability>`: Probability of mutation (default: 0.1).
 
-#### 6. Visualize Results
-Shows the results of a scenario:
+Example:
 ```bash
-python main.py -viz -s <scenario-name> -speed <speed>
+python main.py -run -s m-1 --gen 10000 --pc 0.95 --pm 0.15
 ```
-Replace `<scenario-name>` with the scenario name and `<speed>` with the animation speed.
 
-## Example Workflow
+#### 6. Visualize Evolution
+Visualizes the evolution of solutions for a specific scenario:
+```bash
+python main.py -viz <scenario_name> --speed <speed>
+```
+- `<scenario_name>`: Name of the scenario (e.g., `s-1`, `m-1`, `l-1`).
+- `<speed>`: Animation speed in generations per second (default: 10).
 
-1. **Generate Problem Sets:**
-   ```bash
-   python main.py -generate
-   ```
+Example:
+```bash
+python main.py -viz s-1 --speed 20
+```
 
-2. **Initialize Population:**
-   ```bash
-   python main.py -init -pop 100
-   ```
+---
 
-3. **Run GA:**
-   ```bash
-   python main.py -run -s s-1
-   ```
-
-4. **Visualize Results:**
-   ```bash
-   python main.py -viz -s s-1 -speed 200
-   ```
+### Notes
+- The datasets used for the task are already generated in the `data/` folder. If you want to run the simulation using the same datasets discussed in the report, you can skip the `-reset` and `-generate` steps.
+- The `-init` flag initializes **all scenarios** with the specified population size. If different population sizes are needed for different scenarios, you must run `-init` separately for each scenario.
