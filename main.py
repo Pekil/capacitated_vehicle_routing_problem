@@ -118,8 +118,9 @@ def handle_init(pop_sizes: list[int]):
 
     print("\n--- Initialization complete. ---")
 
-def handle_run(scenario_name):
+def handle_run(scenario_name, generations=5000, pc=0.9, pm=0.1):
     print(f"--- Running GA scenario: {scenario_name} ---")
+    print(f"Generations: {generations}, Crossover Probability: {pc}, Mutation Probability: {pm}")
 
     gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
     if not os.path.exists(gen0_path):
@@ -151,7 +152,7 @@ def handle_run(scenario_name):
 
     print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
 
-    run_sim(problem, logger, evaluator, population, fitness_pop_0)
+    run_sim(problem, logger, evaluator, population, fitness_pop_0, generations, pc, pm)
 
 def handle_visualize(scenario_name, speed):
     print(f"--- Visualizing evolution for scenario: {scenario_name} ---")
@@ -223,10 +224,12 @@ def main():
     parser = argparse.ArgumentParser(description="VRP Genetic Algorithm runner.", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-generate', action='store_true', help="Generate the scenario JSON files only.")
     parser.add_argument('-init', action='store_true', help="Initialize problem sets and create Generation 0 logs.")
-    # <-- IMPLEMENTED AS REQUESTED
     parser.add_argument('-pop', type=int, nargs='+', help="Population size(s). Use 1 value for all, or 3 for s, m, l.")
     parser.add_argument('-run', action='store_true', help="Run the Genetic Algorithm.")
     parser.add_argument('-s', type=str, help="Specify scenario name (used with -run and -viz).")
+    parser.add_argument('--gen', type=int, default=5000, help="Number of generations for the GA. Default: 5000.")
+    parser.add_argument('--pc', type=float, default=0.9, help="Crossover probability for the GA. Default: 0.9.")
+    parser.add_argument('--pm', type=float, default=0.1, help="Mutation probability for the GA. Default: 0.1.")
     parser.add_argument('-reset', action='store_true', help="Remove all generated scenario files and log data.")
     parser.add_argument('-viz', type=str, help="Visualize the evolution from a log file. Provide scenario name (e.g., s-1).")
     parser.add_argument('--speed', type=int, default=10, help="Set animation speed in generations per second (used with -viz). Default: 10.")
@@ -239,16 +242,13 @@ def main():
         if not args.pop:
             print("Error: -pop <size(s)> is required when using -init.")
             sys.exit(1)
-        # <-- IMPLEMENTED AS REQUESTED
         handle_init(args.pop)
     elif args.run:
         if not args.s:
             print("Error: -s <scenario_name> is required when using -run.")
             sys.exit(1)
-        handle_run(args.s)
+        handle_run(args.s, args.gen, args.pc, args.pm)
     elif args.viz:
-        # This argument is positional in the handler, so we need a value.
-        # It's better to check here if the value is provided.
         if not args.viz:
             print("Error: a scenario name is required when using -viz.")
             sys.exit(1)
