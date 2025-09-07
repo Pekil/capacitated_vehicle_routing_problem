@@ -91,37 +91,43 @@ def handle_init(pop_size):
 
     print("\n--- Initialization complete. ---")
 
-def handle_run(scenario_name):
-    print("--- Running GA scenario: {scenario_name} ---")
+def handle_run(scenario_name, generations=5000, pc=0.9, pm=0.1):
+    print(f"--- Running GA scenario: {scenario_name} ---")
+    print(f"Generations: {generations}, Crossover Probability: {pc}, Mutation Probability: {pm}")
 
-    gen0_path = os.path.join("data", "generations", scenario_name, "gen-0.csv")
+    gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
     if not os.path.exists(gen0_path):
-        print("Please run the init first")
+        print("Error: gen_0.csv not found. Please run the '-init' command first.")
         return
-    
+
     json_path = os.path.join("data", f"scenario-{scenario_name}.json")
     if not os.path.exists(json_path):
-        print("Please run the generate first")
+        print("Error: Scenario JSON file not found. Please run the '-generate' command first.")
         return
-    
+
     with open(json_path, 'r') as f:
         scenario_data = json.load(f)
-    
+
     problem = ProblemInstance(scenario_data)
+    logger = GenerationLogger(problem)
+    evaluator = FitnessEvaluator(problem)
 
     population = []
+    fitness_pop_0 = []
     with open(gen0_path, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
+            fitness_pop_0.append(float(row['fitness']))
             chromosome_str = row['chromosome']
-            chromosome = [int(gene) for gene in chromosome_str.split('-')] 
-            Individual = Individual(problem, chromosome=chromosome)
-            population.append(Individual)
-    
+            chromosome = [int(gene) for gene in chromosome_str.split('-')]
+            ind = Individual(problem, chromosome=chromosome)
+            population.append(ind)
+
     print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
-    print("Ga run logic will be implemented here.")
-    
-    
+
+    run_sim(problem, logger, evaluator, population, fitness_pop_0, generations, pc, pm)
+
+
 def handle_reset():
     print("--- Resetting VRP Environment ---")
     data_dir = "data"
@@ -149,10 +155,15 @@ def main():
     parser = argparse.ArgumentParser(description="VRP Genetic Algorithm runner.", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-generate', action='store_true', help="Generate the scenario JSON files only.")
     parser.add_argument('-init', action='store_true', help="Initialize problem sets and create Generation 0 logs.")
-    parser.add_argument('-pop', type=int, help="Population size for initialization (used with -init).")
-    parser.add_argument('-run', action='store_true', help="Run the Genetic Algorithm (currently under development).")
-    parser.add_argument('-s', type=str, help="Specify scenario name for the run (used with -run): s-1, s-2, m-1, m-2, l-1, l-2")
+    parser.add_argument('-pop', type=int, nargs='+', help="Population size(s). Use 1 value for all, or 3 for s, m, l.")
+    parser.add_argument('-run', action='store_true', help="Run the Genetic Algorithm.")
+    parser.add_argument('-s', type=str, help="Specify scenario name (used with -run and -viz).")
+    parser.add_argument('--gen', type=int, default=5000, help="Number of generations for the GA. Default: 5000.")
+    parser.add_argument('--pc', type=float, default=0.9, help="Crossover probability for the GA. Default: 0.9.")
+    parser.add_argument('--pm', type=float, default=0.1, help="Mutation probability for the GA. Default: 0.1.")
     parser.add_argument('-reset', action='store_true', help="Remove all generated scenario files and log data.")
+    parser.add_argument('-viz', type=str, help="Visualize the evolution from a log file. Provide scenario name (e.g., s-1).")
+    parser.add_argument('--speed', type=int, default=10, help="Set animation speed in generations per second (used with -viz). Default: 10.")
 
     args = parser.parse_args()
 
@@ -160,15 +171,22 @@ def main():
         handle_generate()
     elif args.init:
         if not args.pop:
-            print("Error: -pop <size> is required when using -init.")
+            print("Error: -pop <size(s)> is required when using -init.")
             sys.exit(1)
         handle_init(args.pop)
     elif args.run:
-        handle_run(args.s)
+        if not args.s:
+            print("Error: -s <scenario_name> is required when using -run.")
+            sys.exit(1)
+        handle_run(args.s, args.gen, args.pc, args.pm)
+    elif args.viz:
+        if not args.viz:
+            print("Error: a scenario name is required when using -viz.")
+            sys.exit(1)
+        handle_visualize(args.viz, args.speed)
     elif args.reset:
         handle_reset()
     else:
-        # Default action: show status
         handle_status()
 
 if __name__ == "__main__":
