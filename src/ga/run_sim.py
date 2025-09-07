@@ -44,12 +44,15 @@ def run_sim(
     logger: GenerationLogger,  
     evaluator: FitnessEvaluator,
     population_0: List[Individual],
-    fitness_pop_0: List[float]
+    fitness_pop_0: List[float],
+    generations: int = 5000,
+    pc: float = 0.9,
+    pm: float = 0.1
 ):
     ## --- Hyperparameters ---
-    EXIT_CON = 5000
-    Pc = 0.9
-    Pm = 0.1
+    EXIT_CON = generations
+    Pc = pc
+    Pm = pm
 
     # --- Initialize with clean, separated data structures ---
     current_population = population_0

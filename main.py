@@ -13,7 +13,7 @@ from src.ga.logger import GenerationLogger
 from src.ga.run_sim import run_sim
 from src.visualizer.plotter import Plotter
 
-# ... (handle_status, handle_generate, handle_run, handle_visualize, handle_reset are unchanged) ...
+# ... (handle_status, handle_generate, handle_init, handle_reset are unchanged) ...
 def handle_status():
     print("--- VRP Problem Set Status ---")
     data_dir = "data"
@@ -151,9 +151,10 @@ def handle_run(scenario_name, generations=5000, pc=0.9, pm=0.1):
             population.append(ind)
 
     print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
-    print("Ga run logic will be implemented here.")
-    
-    
+
+    run_sim(problem, logger, evaluator, population, fitness_pop_0, generations, pc, pm)
+
+
 def handle_reset():
     print("--- Resetting VRP Environment ---")
     data_dir = "data"
@@ -176,6 +177,49 @@ def handle_reset():
         print("Generations directory not found, nothing to delete.")
 
     print("\n--- Reset complete. ---")
+
+
+def handle_visualize(scenario_name, speed):
+    print(f"--- Visualizing evolution for scenario: {scenario_name} ---")
+
+    log_path = os.path.join("data", "generations", scenario_name, "log.csv")
+    if not os.path.exists(log_path):
+        print(f"Error: Log file not found at '{log_path}'.")
+        print("Please run the simulation with '-run -s {scenario_name}' first.")
+        return
+
+    json_path = os.path.join("data", f"scenario-{scenario_name}.json")
+    if not os.path.exists(json_path):
+        print(f"Error: Scenario file not found at '{json_path}'.")
+        return
+
+    with open(json_path, 'r') as f:
+        scenario_data = json.load(f)
+    problem = ProblemInstance(scenario_data)
+
+    evolution_data = []
+    with open(log_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            routes_str = row['best_routes']
+            routes = []
+            if routes_str:
+                routes = [[int(c) for c in r.split('-')] for r in routes_str.split(';')]
+
+            evolution_data.append({
+                'generation': int(row['generation']),
+                'best_fitness': float(row['best_fitness']),
+                'best_routes': routes
+            })
+
+    if not evolution_data:
+        print("Log file is empty. Nothing to visualize.")
+        return
+
+    print(f"Loaded {len(evolution_data)} generations. Starting animation at {speed} gen/s...")
+
+    plotter = Plotter(title=f"Evolution for {scenario_name}")
+    plotter.animate_evolution(problem, evolution_data, speed)
 
 
 def main():
