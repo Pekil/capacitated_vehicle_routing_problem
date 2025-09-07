@@ -4,6 +4,7 @@ import argparse
 import csv
 import shutil
 import json
+import time
 
 from src.vrp.problem_set import generate_instances, scenario_definitions
 from src.vrp.problem import ProblemInstance
@@ -121,6 +122,8 @@ def handle_init(pop_sizes: list[int]):
 def handle_run(scenario_name):
     print(f"--- Running GA scenario: {scenario_name} ---")
 
+    start_ts = time.perf_counter()
+
     gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
     if not os.path.exists(gen0_path):
         print("Error: gen_0.csv not found. Please run the '-init' command first.")
@@ -152,6 +155,11 @@ def handle_run(scenario_name):
     print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
 
     run_sim(problem, logger, evaluator, population, fitness_pop_0)
+
+    end_ts = time.perf_counter()
+    elapsed = end_ts - start_ts
+    print(f"\nTotal simulation time: {elapsed:.2f} seconds")
+
 
 def handle_visualize(scenario_name, speed):
     print(f"--- Visualizing evolution for scenario: {scenario_name} ---")
