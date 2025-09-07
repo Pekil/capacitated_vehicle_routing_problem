@@ -51,6 +51,7 @@ def handle_status():
 
     print("\nHint: Use '-generate', '-init -pop <size>', '-run -s <name>', or '-viz <name>'.")
 
+
 def handle_generate():
     print("--- Generating VRP Scenario Files ---")
     generate_instances()
@@ -102,6 +103,7 @@ def handle_init(pop_sizes: list[int]):
         print(f"Feasibility: {feasible_count}/{pop_size} ({feasibility_percentage:.2f}%) of individuals had a valid solution.")
     print("\n--- Initialization complete. ---")
 
+
 def handle_run(scenario_name, generations, pc, pm):
     print(f"--- Running GA scenario: {scenario_name} ---")
     print(f"Parameters -> Generations: {generations}, Crossover Pc: {pc}, Mutation Pm: {pm}")
@@ -138,6 +140,22 @@ def handle_run(scenario_name, generations, pc, pm):
     end_ts = time.perf_counter()
     elapsed = end_ts - start_ts
     print(f"Total simulation time: {elapsed:.2f} seconds")
+
+    metadata_path = os.path.join("data", "generations", scenario_name, "metadata.json")
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+    
+    metadata['simulation_time_seconds'] = round(elapsed, 2)
+    metadata['ga_parameters'] = {
+        'generations': generations,
+        'crossover_probability': pc,
+        'mutation_probability': pm
+    }
+
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=4)
+    print(f"Performance metrics saved to '{metadata_path}'")
+
 
 def handle_visualize(scenario_name, speed):
     print(f"--- Visualizing evolution for scenario: {scenario_name} ---")
@@ -194,40 +212,44 @@ def handle_reset():
         print("Generations directory not found, nothing to delete.")
     print("\n--- Reset complete. ---")
 
-def plot_fitness_convergence_curve(scenario: str) -> None:
 
-    log_path = f"data/generations/{scenario}/log.csv"
-    out_path = f"data/generations/{scenario}/fitness.png"
+# <-- MODIFIED: This function now plots worst fitness as well
+def handle_plot(scenario_name):
+    print(f"--- Generating convergence plot for scenario: {scenario_name} ---")
+    
+    log_path = os.path.join("data", "generations", scenario_name, "log.csv")
+    output_path = os.path.join("data", "generations", scenario_name, "convergence_plot.png")
 
-    generations, best_vals, avg_vals, worst_vals = [], [], [], []
-
-    with open(log_path, "r", newline="") as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        for row in reader:
-            generations.append(int(row[0]))
-            best_vals.append(float(row[1]))
-            avg_vals.append(float(row[2]))
-            worst_vals.append(float(row[3]))
-
-    if not generations:
-        print(f"Error: '{log_path}' is empty or invalid; nothing to plot.")
+    if not os.path.exists(log_path):
+        print(f"Error: Log file not found at '{log_path}'. Please run a simulation first.")
         return
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(generations, best_vals, label="Best fitness", linewidth=2, color="green")
-    plt.plot(generations, avg_vals, label="Mean fitness", linestyle="--", color="blue")
+    generations, best_fitness, avg_fitness, worst_fitness = [], [], [], []
 
-    plt.xlabel("Generations")
-    plt.ylabel("Fitness (Total Distance)")
-    plt.title("GA Fitness Convergence Curve")
+    with open(log_path, 'r') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            generations.append(int(row['generation']))
+            best_fitness.append(float(row['best_fitness']))
+            avg_fitness.append(float(row['average_fitness']))
+            # <-- NEW: Read the worst fitness value
+            worst_fitness.append(float(row['worst_fitness']))
+
+    plt.figure(figsize=(12, 7))
+    plt.plot(generations, best_fitness, label='Best Fitness', color='cyan', linewidth=2)
+    plt.plot(generations, avg_fitness, label='Average Fitness', color='magenta', linestyle='--')
+    # <-- NEW: Plot the worst fitness value
+    plt.plot(generations, worst_fitness, label='Worst Fitness', color='red', linestyle=':')
+    
+    plt.title(f'GA Convergence for Scenario: {scenario_name}', fontsize=16)
+    plt.xlabel('Generation', fontsize=12)
+    plt.ylabel('Total Distance (Fitness)', fontsize=12)
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=150)
+    
+    plt.savefig(output_path)
     plt.close()
-
-    print(f"Saved convergence plot to {out_path}")
+    print(f"Convergence plot saved to: {output_path}")
 
 
 def main():
@@ -239,14 +261,15 @@ def main():
     parser.add_argument('-reset', action='store_true', help="Remove all generated scenario files and log data.")
     
     parser.add_argument('-run', action='store_true', help="Run the Genetic Algorithm.")
-    parser.add_argument('-s', type=str, help="Specify scenario name (used with -run).")
+    parser.add_argument('-s', type=str, help="Specify scenario name (used with -run and -plot).")
     parser.add_argument('--gen', type=int, default=5000, help="Number of generations for the GA. Default: 5000.")
     parser.add_argument('--pc', type=float, default=0.9, help="Crossover probability for the GA. Default: 0.9.")
     parser.add_argument('--pm', type=float, default=0.1, help="Mutation probability for the GA. Default: 0.1.")
     
     parser.add_argument('-viz', type=str, help="Visualize the evolution. Provide scenario name (e.g., s-1).")
     parser.add_argument('--speed', type=int, default=10, help="Set animation speed in gen/s (used with -viz). Default: 10.")
-    parser.add_argument('-plot', action='store_true', help="Plots the fitness convergence curve  ")
+    
+    parser.add_argument('-plot', action='store_true', help="Plots the fitness convergence curve (requires -s).")
     
     args = parser.parse_args()
 
@@ -268,10 +291,9 @@ def main():
         handle_reset()
     elif args.plot:
         if not args.s:
-            print("Error: -s <scenario_name> is required when using -run.")
+            print("Error: -s <scenario_name> is required when using -plot.")
             sys.exit(1)
-        plot_fitness_convergence_curve(args.s)
-
+        handle_plot(args.s)
     else:
         handle_status()
 
