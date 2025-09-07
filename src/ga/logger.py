@@ -20,7 +20,6 @@ class GenerationLogger:
                 'best_fitness',
                 'average_fitness',
                 'worst_fitness',
-                'best_chromosome',
                 'best_routes'
             ])
 
@@ -32,48 +31,57 @@ class GenerationLogger:
             "num_customers": problem_instance.num_customers,
             "vehicle_capacity": problem_instance.vehicle_capacity,
             "toughness": problem_instance.toughness
-            # The 'packing_index' line has been removed.
         }
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=4)
 
-    def log_generation(self, generation_number, evaluated_population):
-        if not evaluated_population:
+    # THIS IS THE MAIN LOGGER FOR THE SIMULATION RUN
+    def log_generation(self, generation_number, all_fitness_values, best_fitness, best_routes):
+        if not all_fitness_values:
             return
 
-        evaluated_population.sort(key=lambda x: x["fitness"])
+        valid_fitness_values = [f for f in all_fitness_values if f != float('inf')]
+        avg_fitness = np.mean(valid_fitness_values) if valid_fitness_values else float('inf')
+        worst_fitness = max(all_fitness_values)
 
-        best_solution = evaluated_population[0]
-        worst_solution = evaluated_population[-1]
-        
-        fitness_values = [sol["fitness"] for sol in evaluated_population if sol["fitness"] != float('inf')]
-        avg_fitness = np.mean(fitness_values) if fitness_values else float('inf')
-
-        chromosome_str = "-".join(map(str, best_solution['individual'].chromosome))
+        routes_str = ';'.join(["-".join(map(str, route)) for route in best_routes])
 
         with open(self.log_file_path, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 generation_number,
-                best_solution['fitness'],
+                best_fitness,
                 avg_fitness,
-                worst_solution['fitness'],
-                chromosome_str
+                worst_fitness,
+                routes_str
             ])
-        
-        if generation_number == 0:
-            gen_0_path = os.path.join(self.output_dir, 'gen_0.csv')
-            with open(gen_0_path, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    'chromosome',
-                    'fitness'
-                ])
 
-                for sol in evaluated_population:
-                    chromosome_str = "-".join(map(str, sol['individual'].chromosome))
-                    routes_str = ';'.join(["-".join(map(str, route)) for route in sol['routes']])
-                    writer.writerow([
-                        chromosome_str,
-                        sol['fitness']
-                    ])
+    # <-- FIX: NEW DEDICATED METHOD FOR handle_init
+    # This method handles the specific data structure created during initialization
+    def log_initial_population(self, evaluated_population):
+        # First, log the summary for Generation 0 to the main log file
+        if not evaluated_population:
+            return
+            
+        evaluated_population.sort(key=lambda x: x["fitness"])
+        best_solution = evaluated_population[0]
+        
+        all_fitness_values = [sol["fitness"] for sol in evaluated_population]
+        
+        self.log_generation(0, all_fitness_values, best_solution['fitness'], best_solution['routes'])
+        
+        # Second, write the detailed gen_0.csv file for loading
+        gen_0_path = os.path.join(self.output_dir, 'gen_0.csv')
+        with open(gen_0_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'chromosome',
+                'fitness'
+            ])
+
+            for sol in evaluated_population:
+                chromosome_str = "-".join(map(str, sol['individual'].chromosome))
+                writer.writerow([
+                    chromosome_str,
+                    sol['fitness']
+                ])

@@ -5,21 +5,20 @@ import csv
 import shutil
 import json
 
-# random comment
-
-# Updated import
 from src.vrp.problem_set import generate_instances, scenario_definitions
 from src.vrp.problem import ProblemInstance
 from src.ga.individual import Individual
 from src.ga.fitness import FitnessEvaluator
 from src.ga.logger import GenerationLogger
+from src.ga.run_sim import run_sim
+from src.visualizer.plotter import Plotter
 
+# ... (handle_status, handle_generate, handle_run, handle_visualize, handle_reset are unchanged) ...
 def handle_status():
     print("--- VRP Problem Set Status ---")
     data_dir = "data"
     generations_dir = "data/generations"
 
-    # Updated logic: Check for JSON files first
     for scenario_name in scenario_definitions.keys():
         json_path = os.path.join(data_dir, f"scenario-{scenario_name}.json")
         if not os.path.exists(json_path):
@@ -33,6 +32,10 @@ def handle_status():
 
         try:
             with open(log_path, 'r') as f:
+                if len(f.readlines()) < 2:
+                     print(f"  - {scenario_name}: Initialized, but not run.")
+                     continue
+                f.seek(0)
                 reader = csv.reader(f)
                 header = next(reader)
                 gen_0_data = next(reader)
@@ -41,30 +44,55 @@ def handle_status():
                 if fitness == float('inf'):
                     print(f"  - {scenario_name}: Initialized. No feasible solution found in Gen 0.")
                 else:
-                    print(f"  - {scenario_name}: Initialized. Best initial fitness: {fitness:.2f}")
-        except StopIteration:
+                    print(f"  - {scenario_name}: Run complete. Best initial fitness: {fitness:.2f}")
+        except (StopIteration, ValueError):
                 print(f"  - {scenario_name}: Log file is empty or corrupt.")
 
-    print("\nHint: Use '-generate' to create scenario files, or '-init -pop <size>' to create logs.")
+    print("\nHint: Use '-generate', '-init -pop <size>', '-run -s <name>', or '-viz <name>'.")
 
-# New function to only generate the JSON files
+
 def handle_generate():
     print("--- Generating VRP Scenario Files ---")
     generate_instances()
     print("\nScenario files generated successfully in 'data/' directory.")
 
-def handle_init(pop_size):
-    print(f"--- Initializing all scenarios with population size: {pop_size} ---")
-    # This call will create JSON files if they're missing, which is correct behavior for init
+def handle_init(pop_sizes: list[int]):
+    # 1. Validate the number of population size arguments
+    if len(pop_sizes) not in [1, 3]:
+        print("Error: -pop requires either 1 value (e.g., 100) or 3 values (e.g., 100 200 300).")
+        sys.exit(1)
+
+    # 2. Create a mapping from scenario prefix to population size
+    pop_map = {}
+    if len(pop_sizes) == 1:
+        size = pop_sizes[0]
+        pop_map = {'s': size, 'm': size, 'l': size}
+        print(f"--- Preparing to initialize all scenarios with population size: {size} ---")
+    else: # len is 3
+        pop_map = {'s': pop_sizes[0], 'm': pop_sizes[1], 'l': pop_sizes[2]}
+        print(f"--- Preparing to initialize with sizes: Small={pop_map['s']}, Medium={pop_map['m']}, Large={pop_map['l']} ---")
+
     scenarios = generate_instances()
-    
-    for scenario_name, scenario_data in scenarios.items():
-        print(f"\n===== Processing Scenario: {scenario_name} =====")
-        
+
+    # 3. SAFETY CHECK: Abort if any gen_0 files already exist
+    for scenario_name in scenarios:
+        gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
+        if os.path.exists(gen0_path):
+            print(f"\nError: Initialization file '{gen0_path}' already exists.")
+            print("To prevent overwriting an experiment, please run 'python main.py -reset' or manually delete the 'data/generations' folder.")
+            sys.exit(1)
+
+    # 4. If safety check passes, proceed with initialization
+    for name, scenario_data in scenarios.items():
+        prefix = name[0] # 's', 'm', or 'l'
+        pop_size = pop_map[prefix]
+
+        print(f"\n===== Processing Scenario: {name} with Population: {pop_size} =====")
+
         problem = ProblemInstance(scenario_data)
         logger = GenerationLogger(problem)
         evaluator = FitnessEvaluator(problem)
-        
+
         population = [Individual(problem) for _ in range(pop_size)]
 
         evaluated_population = []
@@ -72,11 +100,10 @@ def handle_init(pop_size):
         for i, individual in enumerate(population):
             sys.stdout.write(f"\rEvaluating individual {i+1}/{pop_size}...")
             sys.stdout.flush()
-            # Remember to remove the DEBUG print from fitness.py
             fitness, routes = evaluator.evaluate(individual)
             if fitness != float('inf'):
                 feasible_count += 1
-            
+
             evaluated_population.append({
                 "individual": individual,
                 "fitness": fitness,
@@ -84,8 +111,8 @@ def handle_init(pop_size):
             })
         print()
 
-        logger.log_generation(0, evaluated_population)
-        
+        logger.log_initial_population(evaluated_population)
+
         feasibility_percentage = (feasible_count / pop_size) * 100
         print(f"Feasibility: {feasible_count}/{pop_size} ({feasibility_percentage:.2f}%) of individuals had a valid solution.")
 
@@ -124,10 +151,9 @@ def handle_run(scenario_name, generations=5000, pc=0.9, pm=0.1):
             population.append(ind)
 
     print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
-
-    run_sim(problem, logger, evaluator, population, fitness_pop_0, generations, pc, pm)
-
-
+    print("Ga run logic will be implemented here.")
+    
+    
 def handle_reset():
     print("--- Resetting VRP Environment ---")
     data_dir = "data"
@@ -148,8 +174,9 @@ def handle_reset():
         print(f"Removed directory and all its contents: {generations_dir}")
     else:
         print("Generations directory not found, nothing to delete.")
-    
+
     print("\n--- Reset complete. ---")
+
 
 def main():
     parser = argparse.ArgumentParser(description="VRP Genetic Algorithm runner.", formatter_class=argparse.RawTextHelpFormatter)
