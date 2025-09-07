@@ -4,6 +4,7 @@ import argparse
 import csv
 import shutil
 import json
+import time
 
 from src.vrp.problem_set import generate_instances, scenario_definitions
 from src.vrp.problem import ProblemInstance
@@ -122,6 +123,8 @@ def handle_run(scenario_name, generations=5000, pc=0.9, pm=0.1):
     print(f"--- Running GA scenario: {scenario_name} ---")
     print(f"Generations: {generations}, Crossover Probability: {pc}, Mutation Probability: {pm}")
 
+    start_ts = time.perf_counter()
+
     gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
     if not os.path.exists(gen0_path):
         print("Error: gen_0.csv not found. Please run the '-init' command first.")
@@ -177,6 +180,11 @@ def handle_reset():
         print("Generations directory not found, nothing to delete.")
 
     print("\n--- Reset complete. ---")
+
+
+    end_ts = time.perf_counter()
+    elapsed = end_ts - start_ts
+    print(f"\nTotal simulation time: {elapsed:.2f} seconds")
 
 
 def handle_visualize(scenario_name, speed):
