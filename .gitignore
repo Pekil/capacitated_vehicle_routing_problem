@@ -1,2 +1,3 @@
 .VIRTUAL_ENV
 *.pyc
+/data/generations
