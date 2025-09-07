@@ -194,6 +194,42 @@ def handle_reset():
         print("Generations directory not found, nothing to delete.")
     print("\n--- Reset complete. ---")
 
+def plot_fitness_convergence_curve(scenario: str) -> None:
+
+    log_path = f"data/generations/{scenario}/log.csv"
+    out_path = f"data/generations/{scenario}/fitness.png"
+
+    generations, best_vals, avg_vals, worst_vals = [], [], [], []
+
+    with open(log_path, "r", newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            generations.append(int(row[0]))
+            best_vals.append(float(row[1]))
+            avg_vals.append(float(row[2]))
+            worst_vals.append(float(row[3]))
+
+    if not generations:
+        print(f"Error: '{log_path}' is empty or invalid; nothing to plot.")
+        return
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(generations, best_vals, label="Best fitness", linewidth=2, color="green")
+    plt.plot(generations, avg_vals, label="Mean fitness", linestyle="--", color="blue")
+
+    plt.xlabel("Generations")
+    plt.ylabel("Fitness (Total Distance)")
+    plt.title("GA Fitness Convergence Curve")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150)
+    plt.close()
+
+    print(f"Saved convergence plot to {out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="VRP Genetic Algorithm runner.", formatter_class=argparse.RawTextHelpFormatter)
     
@@ -210,6 +246,7 @@ def main():
     
     parser.add_argument('-viz', type=str, help="Visualize the evolution. Provide scenario name (e.g., s-1).")
     parser.add_argument('--speed', type=int, default=10, help="Set animation speed in gen/s (used with -viz). Default: 10.")
+    parser.add_argument('-plot', action='store_true', help="Plots the fitness convergence curve  ")
     
     args = parser.parse_args()
 
@@ -229,6 +266,12 @@ def main():
         handle_visualize(args.viz, args.speed)
     elif args.reset:
         handle_reset()
+    elif args.plot:
+        if not args.s:
+            print("Error: -s <scenario_name> is required when using -run.")
+            sys.exit(1)
+        plot_fitness_convergence_curve(args.s)
+
     else:
         handle_status()
 
