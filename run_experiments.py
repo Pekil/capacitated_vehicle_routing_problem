@@ -14,7 +14,6 @@ PYTHON_EXECUTABLE = sys.executable
 # Scenarios to run
 SCENARIOS = ['s-1', 's-2', 'm-1', 'm-2', 'l-1', 'l-2']
 
-# <-- MODIFIED: Population sizes for Small, Medium, and Large scenarios set correctly
 POPULATION_SIZES = [100, 200, 300]
 
 # Parameter sets to test

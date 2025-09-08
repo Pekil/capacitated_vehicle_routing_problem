@@ -51,7 +51,6 @@ class Plotter:
     def show(self):
         plt.show()
 
-    # <-- MODIFIED: Method now accepts a 'speed' parameter with a default
     def animate_evolution(self, problem_instance, evolution_data, speed=10):
         self.draw_locations(problem_instance)
         
@@ -97,7 +96,6 @@ class Plotter:
             
             return tuple(self.route_lines) + (gen_text,)
 
-        # <-- MODIFIED: Calculate the frame interval from the speed
         # Ensure speed is not zero to avoid division error
         if speed <= 0:
             speed = 1
