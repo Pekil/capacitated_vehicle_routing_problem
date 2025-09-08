@@ -36,13 +36,7 @@ This project provides a comprehensive toolkit for solving the Vehicle Routing Pr
     source venv/bin/activate
     ```
 
-3.  **Dependencies**: Install the required Python packages. Create a file named `requirements.txt` in your project's root directory with the following content:
-    ```
-    numpy
-    pandas
-    matplotlib
-    ```
-    Then, install them using pip:
+3.  **Dependencies**: Install the required Python packages.
     ```bash
     pip install -r requirements.txt
     ```
