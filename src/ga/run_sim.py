@@ -36,7 +36,9 @@ def select_parents(select_prob: SelectionProbabilities, num_parents: int) -> Lis
     population, probabilities = zip(*select_prob)
     return random.choices(population=population, weights=probabilities, k=num_parents)
 
-# Main GA loop: evolve the population
+# Implements the main steady-state Genetic Algorithm loop.
+# In each generation, it selects two parents, creates two offspring, and
+# replaces the two worst individuals in the population with the new offspring.
 def run_sim(
     problem: ProblemInstance,
     logger: GenerationLogger,

@@ -15,7 +15,9 @@ class FitnessEvaluator:
         return best_distance, best_routes
 
     def _optimal_split(self, chromosome, num_vehicles):
-        # Dynamic programming to split the route into valid vehicle trips
+        # Implements the Split algorithm using dynamic programming to find the optimal
+        # way to partition a single giant tour (chromosome) into a set of feasible
+        # vehicle routes with the minimum total distance.
         n: int = len(chromosome)
         C: List[float]= [float('inf')] * (n + 1)
         P: List[int] = [0] * (n + 1)

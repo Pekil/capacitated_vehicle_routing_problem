@@ -1,90 +1,140 @@
 # Vehicle Routing Problem (VRP) - Group 9 ACIT 
 
-## Overview
-This project solves the Capacitated Vehicle Routing Problem (CVRP) using a Genetic Algorithm (GA). It includes tools to create problem instances, check solutions, and save results.
+VRP Genetic Algorithm Solver
 
-## Setup
+This project provides a comprehensive toolkit for solving the Vehicle Routing Problem (VRP) using a steady-state Genetic Algorithm (GA). It includes features for scenario generation, configurable GA execution, results visualization, and a fully automated experimentation suite for performance analysis.
 
-### 1. Create a Virtual Environment
-Run these commands to set up a virtual environment:
+Features
 
-#### Linux/macOS:
-```bash
-python3 -m venv .VIRTUAL_ENV
-source .VIRTUAL_ENV/bin/activate
-```
+Random Scenario Generation: Creates VRP problem instances of varying complexity (small, medium, large) with randomized customer locations and demands.
 
-#### Windows:
-```bash
-python -m venv .VIRTUAL_ENV
+Configurable Genetic Algorithm: A steady-state GA that uses Partially-Mapped Crossover (PMX) and Swap Mutation to find optimal vehicle routes. Key parameters like generations, crossover probability, and mutation probability are controllable from the command line.
+
+Fitness Evaluation: Utilizes a sophisticated dynamic programming algorithm (the Split algorithm) to optimally partition a chromosome into the most efficient set of vehicle routes, respecting vehicle capacity constraints.
+
+Results Logging: Automatically saves detailed generation-by-generation statistics (best, average, worst fitness) and run metadata (parameters, execution time) to .csv and .json files.
+
+Dynamic Visualization:
+
+Animation (-viz): Plays back the entire evolution of the best solution for a given run, showing how the routes improve over generations.
+
+Convergence Plotting (-plot): Automatically generates and saves a .png graph of the best, average, and worst fitness over generations, providing a clear view of the algorithm's convergence.
+
+Automated Experimentation Suite: A master script (run_experiments.py) that fully automates the process of running multiple trials for different scenarios and parameter sets, aggregating the results, and generating final report-ready statistical tables.
+
+Requirements & Setup
+
+Python 3.8+
+
+Virtual Environment (Recommended):
+
+# Create the virtual environment
+python -m venv .VIRTUAL_ENV 
+
+# Activate it
+# On Windows:
 .\.VIRTUAL_ENV\Scripts\activate
-```
+# On macOS/Linux:
+source .VIRTUAL_ENV/bin/activate
 
-### 2. Install Dependencies
-Install the required Python packages:
-```bash
+Dependencies: Install the required Python packages. 
 pip install -r requirements.txt
-```
 
-## How to Use
+# For the Instructor: How to Run the Program
 
-### COMMANDS
+There are two primary ways to use this program:
 
-#### 1. Reset Environment
-Deletes all created data:
-```bash
+Run the Full Experiment Suite: This is the recommended method to replicate the final report results. It runs all 90 simulations automatically.
+
+Run Individual Tests: This method is for examining or verifying the performance of any single configuration.
+
+1. Run the Full Experiment Suite (Recommended)
+
+This is the simplest and most effective way to evaluate the project. The run_experiments.py script will automatically handle all necessary setup and cleanup.
+
+What this script does:
+
+Initializes new populations for all 6 scenarios with sizes 100 (small), 200 (medium), and 300 (large), using the existing scenario files.
+
+Systematically runs 5 independent trials for each of the 6 scenarios with each of the 3 predefined parameter sets (Baseline, Exploration, Exploitation), for a total of 90 runs.
+
+Parses all results and calculates the aggregated statistics.
+**THIS WILL TAKE UP TO 20 minutes**
+
+Prints the final, formatted summary tables to the console and saves them to data/experiments/final_summary_report.csv.
+
+To execute, simply run the following command from the project's root directory:
+
+``python run_experiments.py``
+
+This single command will generate all the results for the report.
+
+2. Run Individual Tests
+
+This method allows you to run a single simulation for any scenario with any set of parameters.
+
+Step A: Initialize the Populations
+Before running any simulation, you must first create the initial "Generation 0" populations. The script includes a safety check to prevent you from accidentally overwriting a previous initialization. If you need to re-initialize, you must first delete the data/generations directory manually.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# Initialize Small scenarios with pop 100, Medium with 200, and Large with 300
+python main.py -init -pop 100 200 300
+
+# OR, to initialize all scenarios with a single population size of 150
+python main.py -init -pop 150
+
+Step B: Run a GA Simulation
+Use the -run command to execute the Genetic Algorithm.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# Run a baseline simulation on scenario 'm-1'
+python main.py -run -s m-1
+
+# Run a custom experiment with 10,000 generations
+python main.py -run -s m-1 --gen 10000 --pc 0.8 --pm 0.3
+
+Results will be saved in data/generations/m-1/.
+
+Step C: Analyze the Results
+You can then generate a convergence plot or watch the animation for that specific run.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# Create a .png graph of the fitness curves
+python main.py -plot -s m-1
+
+# Watch an animation of the best solution evolving over time
+python main.py -viz m-1 --speed 50
+Advanced Usage: Generating New Scenarios
+
+The scenario-*.json files are included in the project. If you wish to delete them and generate a brand new set of random problems, you can use the -reset and -generate commands. This is not necessary for a standard run.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# WARNING: This will delete all generated data, including scenario files.
 python main.py -reset
-```
 
-#### 2. Generate Problem Sets
-Creates scenario files in the `data/` folder:
-```bash
-python main.py -generate
-```
-
-#### 3. Check Status
-Shows the current state of the environment:
-```bash
-python main.py
-```
-
-#### 4. Initialize Population
-Creates an initial population for all scenarios:
-```bash
-python main.py -init -pop <size>
-```
-Replace `<size>` with the number of individuals you want.
-
-#### 5. Run Genetic Algorithm
-Runs the GA for a specific scenario:
-```bash
-python main.py -run -s <scenario_name> --gen <generations> --pc <crossover_probability> --pm <mutation_probability>
-```
-- `<scenario_name>`: Name of the scenario (e.g., `s-1`, `m-1`, `l-1`).
-- `<generations>`: Number of generations to run (default: 5000).
-- `<crossover_probability>`: Probability of crossover (default: 0.9).
-- `<mutation_probability>`: Probability of mutation (default: 0.1).
-
-Example:
-```bash
-python main.py -run -s m-1 --gen 10000 --pc 0.95 --pm 0.15
-```
-
-#### 6. Visualize Evolution
-Visualizes the evolution of solutions for a specific scenario:
-```bash
-python main.py -viz <scenario_name> --speed <speed>
-```
-- `<scenario_name>`: Name of the scenario (e.g., `s-1`, `m-1`, `l-1`).
-- `<speed>`: Animation speed in generations per second (default: 10).
-
-Example:
-```bash
-python main.py -viz s-1 --speed 20
-```
-
----
-
-### Notes
-- The datasets used for the task are already generated in the `data/` folder. If you want to run the simulation using the same datasets discussed in the report, you can skip the `-reset` and `-generate` steps.
-- The `-init` flag initializes **all scenarios** with the specified population size. If different population sizes are needed for different scenarios, you must run `-init` separately for each scenario.
+# This will create a new set of scenario-*.json files.
+python main.py -generate```
