@@ -9,37 +9,34 @@ from typing import List
 import sys
 import numpy as np
 
+# Used for selection: each individual gets a probability
 SelectionProbabilities = list[tuple[Individual, float]]
 
+# Roulette wheel selection: better fitness = higher chance
 def calc_roulette_prob(population: List[Individual], fitness_values: List[float]) -> SelectionProbabilities:
     EPSILON = 1e-6
-
     combined = list(zip(population, fitness_values))
     valid_solutions = [(ind, fit) for ind, fit in combined if fit != float('inf')]
-
     if not valid_solutions:
         equal_prob = 1.0 / len(population)
         return [(ind, equal_prob) for ind in population]
-
     sorted_pop = sorted(valid_solutions, key=lambda item: item[1])
-
     highest_fitness = sorted_pop[-1][1]
     inversed_val_pop: list[tuple[Individual, float]] = [
         (indiv, (highest_fitness - fitness) + EPSILON)
         for indiv, fitness in sorted_pop
     ]
-
     TOT_VALUE = sum(item[1] for item in inversed_val_pop)
     return [(indiv, val / TOT_VALUE) for indiv, val in inversed_val_pop]
 
+# Pick parents for crossover
 def select_parents(select_prob: SelectionProbabilities, num_parents: int) -> List[Individual]:
     if not select_prob:
         return []
-
     population, probabilities = zip(*select_prob)
     return random.choices(population=population, weights=probabilities, k=num_parents)
 
-# <-- FIX: Function signature updated to accept GA parameters
+# Main GA loop: evolve the population
 def run_sim(
     problem: ProblemInstance,
     logger: GenerationLogger,

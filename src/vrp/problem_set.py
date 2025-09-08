@@ -3,7 +3,7 @@ import json
 import os
 from typing import List
 
-
+# Defines the different scenario types and their ranges
 scenario_definitions = {
     's-1': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
     's-2': {"num_vehicles_range": (2, 10), "num_customers_range": (10, 20)},
@@ -13,6 +13,7 @@ scenario_definitions = {
     'l-2': {"num_vehicles_range": (26, 50), "num_customers_range": (20, 50)}
 }
 
+# Makes a random scenario with customers, depot, and demands
 def generate_scenario(
     name,
     num_vehicle_range,
@@ -23,19 +24,16 @@ def generate_scenario(
     num_vehicles = random.randint(*num_vehicle_range)
     num_customers = random.randint(*num_customer_range)
     depot = (50,50)
-
     customers = []
     for i in range(num_customers):
         x = random.uniform(coord_range[0], coord_range[1])
         y = random.uniform(coord_range[0], coord_range[1])
         customers.append((x,y))
-
     c_demands, fleet_utilization = _randomize_customer_demands(
         num_vehicles,
         vehicle_capacity,
         num_customers
     )
-
     return {
         "name": name,
         "num_vehicles": num_vehicles,
@@ -47,6 +45,7 @@ def generate_scenario(
         "fleet_utilization": fleet_utilization,
     }
 
+# Randomly assigns customer demands so the fleet is used well
 def _randomize_customer_demands(num_vehicles, vehicle_capacity, num_customers):
     lower_demand_bound = 10
     

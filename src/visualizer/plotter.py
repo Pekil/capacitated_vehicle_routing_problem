@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
+# Plots the VRP scenario and routes
 class Plotter:
     def __init__(self, title="VRP Visualizer"):
         self.fig, self.ax = plt.subplots()
@@ -13,37 +14,32 @@ class Plotter:
         self.ax.tick_params(axis='y', colors='white')
         for spine in self.ax.spines.values():
             spine.set_edgecolor('white')
-        
         self.route_lines = []
 
     def draw_locations(self, problem_instance):
+        # Draw depot and customers
         depot = problem_instance.depot
         customers = problem_instance.customers
         demands = problem_instance.customer_demands
-
         d_x, d_y = depot
         self.ax.scatter(d_x, d_y, c='red', marker='s', label='Depot', s=100)
-
         if customers:
             customer_x, customer_y = zip(*customers)
             sizes = [20 + demand * 2 for demand in demands]
             self.ax.scatter(customer_x, customer_y, c='cyan', marker='o', label = 'Customers', s=sizes)
-        
         self.ax.set_xlim(-10, 110)
         self.ax.set_ylim(-10, 110)
         self.ax.grid(True, linestyle='--', alpha=0.3)
 
     def draw_routes(self, problem_instance, routes):
+        # Draw each vehicle's route
         if not routes:
             return
-        
         cmap = plt.get_cmap('gist_rainbow', len(routes))
         colors = [cmap(i) for i in range(len(routes))]
-        
         for i, route in enumerate(routes):
             if not route:
                 continue
-
             color = colors[i]
             full_path_indicies = [0] + route + [0]
             path_coords = [problem_instance.all_locations[idx] for idx in full_path_indicies]

@@ -15,6 +15,7 @@ from src.ga.logger import GenerationLogger
 from src.ga.run_sim import run_sim
 from src.visualizer.plotter import Plotter
 
+# ... (handle_status, handle_generate, handle_visualize, handle_reset, handle_plot are unchanged) ...
 def handle_status():
     print("--- VRP Problem Set Status ---")
     data_dir = "data"
@@ -56,6 +57,7 @@ def handle_generate():
     print("--- Generating VRP Scenario Files ---")
     generate_instances()
     print("\nScenario files generated successfully in 'data/' directory.")
+
 
 def handle_init(pop_sizes: list[int]):
     if len(pop_sizes) not in [1, 3]:
@@ -103,26 +105,36 @@ def handle_init(pop_sizes: list[int]):
         print(f"Feasibility: {feasible_count}/{pop_size} ({feasibility_percentage:.2f}%) of individuals had a valid solution.")
     print("\n--- Initialization complete. ---")
 
-
-def handle_run(scenario_name, generations, pc, pm):
-    print(f"--- Running GA scenario: {scenario_name} ---")
-    print(f"Parameters -> Generations: {generations}, Crossover Pc: {pc}, Mutation Pm: {pm}")
+# <-- MODIFIED: This function now accepts an output_dir
+def handle_run(scenario_name, generations, pc, pm, output_dir=None):
+    # This prevents the top-level print statements from cluttering experiment logs
+    is_experiment_run = output_dir is not None
+    
+    if not is_experiment_run:
+        print(f"--- Running GA scenario: {scenario_name} ---")
+        print(f"Parameters -> Generations: {generations}, Crossover Pc: {pc}, Mutation Pm: {pm}")
 
     start_ts = time.perf_counter()
 
+    # The init command still saves to the default location, which is fine
     gen0_path = os.path.join("data", "generations", scenario_name, "gen_0.csv")
     if not os.path.exists(gen0_path):
-        print("Error: gen_0.csv not found. Please run the '-init' command first.")
+        print(f"Error: gen_0.csv not found for scenario '{scenario_name}'. Please run the '-init' command first.")
         return
+
     json_path = os.path.join("data", f"scenario-{scenario_name}.json")
     if not os.path.exists(json_path):
-        print("Error: Scenario JSON file not found. Please run the '-generate' command first.")
+        print(f"Error: Scenario JSON file not found. Please run the '-generate' command first.")
         return
+        
     with open(json_path, 'r') as f:
         scenario_data = json.load(f)
+        
     problem = ProblemInstance(scenario_data)
-    logger = GenerationLogger(problem)
+    # <-- MODIFIED: Pass the output directory to the logger
+    logger = GenerationLogger(problem, output_dir)
     evaluator = FitnessEvaluator(problem)
+    
     population = []
     fitness_pop_0 = []
     with open(gen0_path, 'r') as f:
@@ -133,20 +145,26 @@ def handle_run(scenario_name, generations, pc, pm):
             chromosome = [int(gene) for gene in chromosome_str.split('-')]
             ind = Individual(problem, chromosome=chromosome)
             population.append(ind)
-    print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
+            
+    if not is_experiment_run:
+        print(f"Successfully loaded {len(population)} individuals from {gen0_path}")
 
     run_sim(problem, logger, evaluator, population, fitness_pop_0, generations, pc, pm)
 
     end_ts = time.perf_counter()
     elapsed = end_ts - start_ts
-    print(f"Total simulation time: {elapsed:.2f} seconds")
+    
+    if not is_experiment_run:
+        print(f"Total simulation time: {elapsed:.2f} seconds")
 
-    metadata_path = os.path.join("data", "generations", scenario_name, "metadata.json")
+    # The output directory for the metadata is now determined by the logger
+    metadata_path = os.path.join(logger.output_dir, "metadata.json")
     with open(metadata_path, 'r') as f:
         metadata = json.load(f)
     
     metadata['simulation_time_seconds'] = round(elapsed, 2)
     metadata['ga_parameters'] = {
+        'population_size': len(population),
         'generations': generations,
         'crossover_probability': pc,
         'mutation_probability': pm
@@ -154,8 +172,9 @@ def handle_run(scenario_name, generations, pc, pm):
 
     with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=4)
-    print(f"Performance metrics saved to '{metadata_path}'")
-
+        
+    if not is_experiment_run:
+        print(f"Performance metrics saved to '{metadata_path}'")
 
 def handle_visualize(scenario_name, speed):
     print(f"--- Visualizing evolution for scenario: {scenario_name} ---")
@@ -213,7 +232,6 @@ def handle_reset():
     print("\n--- Reset complete. ---")
 
 
-# <-- MODIFIED: This function now plots worst fitness as well
 def handle_plot(scenario_name):
     print(f"--- Generating convergence plot for scenario: {scenario_name} ---")
     
@@ -232,13 +250,11 @@ def handle_plot(scenario_name):
             generations.append(int(row['generation']))
             best_fitness.append(float(row['best_fitness']))
             avg_fitness.append(float(row['average_fitness']))
-            # <-- NEW: Read the worst fitness value
             worst_fitness.append(float(row['worst_fitness']))
 
     plt.figure(figsize=(12, 7))
     plt.plot(generations, best_fitness, label='Best Fitness', color='cyan', linewidth=2)
     plt.plot(generations, avg_fitness, label='Average Fitness', color='magenta', linestyle='--')
-    # <-- NEW: Plot the worst fitness value
     plt.plot(generations, worst_fitness, label='Worst Fitness', color='red', linestyle=':')
     
     plt.title(f'GA Convergence for Scenario: {scenario_name}', fontsize=16)
@@ -270,6 +286,8 @@ def main():
     parser.add_argument('--speed', type=int, default=10, help="Set animation speed in gen/s (used with -viz). Default: 10.")
     
     parser.add_argument('-plot', action='store_true', help="Plots the fitness convergence curve (requires -s).")
+    # <-- MODIFIED: Add the output argument, hidden from the user in help text
+    parser.add_argument('--output', type=str, help=argparse.SUPPRESS) # For internal use by experiment runner
     
     args = parser.parse_args()
 
@@ -284,7 +302,7 @@ def main():
         if not args.s:
             print("Error: -s <scenario_name> is required when using -run.")
             sys.exit(1)
-        handle_run(args.s, args.gen, args.pc, args.pm)
+        handle_run(args.s, args.gen, args.pc, args.pm, args.output) # Pass the new argument
     elif args.viz:
         handle_visualize(args.viz, args.speed)
     elif args.reset:
