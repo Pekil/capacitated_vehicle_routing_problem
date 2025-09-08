@@ -105,7 +105,6 @@ def handle_init(pop_sizes: list[int]):
         print(f"Feasibility: {feasible_count}/{pop_size} ({feasibility_percentage:.2f}%) of individuals had a valid solution.")
     print("\n--- Initialization complete. ---")
 
-# <-- MODIFIED: This function now accepts an output_dir
 def handle_run(scenario_name, generations, pc, pm, output_dir=None):
     # This prevents the top-level print statements from cluttering experiment logs
     is_experiment_run = output_dir is not None
@@ -131,7 +130,6 @@ def handle_run(scenario_name, generations, pc, pm, output_dir=None):
         scenario_data = json.load(f)
         
     problem = ProblemInstance(scenario_data)
-    # <-- MODIFIED: Pass the output directory to the logger
     logger = GenerationLogger(problem, output_dir)
     evaluator = FitnessEvaluator(problem)
     
@@ -286,7 +284,6 @@ def main():
     parser.add_argument('--speed', type=int, default=10, help="Set animation speed in gen/s (used with -viz). Default: 10.")
     
     parser.add_argument('-plot', action='store_true', help="Plots the fitness convergence curve (requires -s).")
-    # <-- MODIFIED: Add the output argument, hidden from the user in help text
     parser.add_argument('--output', type=str, help=argparse.SUPPRESS) # For internal use by experiment runner
     
     args = parser.parse_args()
