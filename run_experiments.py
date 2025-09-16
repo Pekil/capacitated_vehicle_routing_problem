@@ -11,10 +11,8 @@ import sys
 # Use the currently running Python interpreter for all subprocesses
 PYTHON_EXECUTABLE = sys.executable
 
-# Scenarios to run
-SCENARIOS = ['s-1', 's-2', 'm-1', 'm-2', 'l-1', 'l-2']
-
-POPULATION_SIZES = [100, 200, 300]
+# Scenarios to run (placeholders until CVRPLIB integration)
+SCENARIOS = []
 
 # Parameter sets to test
 PARAMS = [
@@ -86,21 +84,9 @@ def main():
 
     # --- Step 1: Preparation ---
     print("\n[Phase 1] Preparing environment for a clean experiment run...")
-    
     if os.path.exists(EXPERIMENTS_BASE_DIR):
         print(f"  - Removing old experiment results from '{EXPERIMENTS_BASE_DIR}'...")
         shutil.rmtree(EXPERIMENTS_BASE_DIR)
-        
-    if os.path.exists(GENERATIONS_DIR):
-        print(f"  - Removing old initializations from '{GENERATIONS_DIR}'...")
-        shutil.rmtree(GENERATIONS_DIR)
-        
-    print("  - Initializing new populations for existing scenarios...")
-    
-    pop_size_strs = [str(p) for p in POPULATION_SIZES]
-    init_command = [PYTHON_EXECUTABLE, 'main.py', '-init', '-pop'] + pop_size_strs
-    subprocess.run(init_command, check=True)
-    
     print("[Phase 1] Complete.")
 
     # --- Step 2: Running All Simulations ---
