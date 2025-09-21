@@ -77,6 +77,7 @@ def main():
         for parameter_set in parameter_sets:
             for run in range(runs_per):
                 start = time.time()
+
                 final_front, runtime, evaluations = run_nsga2(
                     problem_instances[i],
                     fitnessEvaluators[i],

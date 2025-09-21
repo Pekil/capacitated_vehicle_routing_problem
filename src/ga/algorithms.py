@@ -14,45 +14,71 @@ def create_valid_pop(problem: ProblemInstance, population_size: int) -> list[Ind
     """
     Creates a hybrid initial population.
     - 50% of individuals are created with purely random chromosomes.
-    - 50% are created using a capacity-packing heuristic to generate
-      chromosomes that are likely to be capacity-feasible.
+    - 50% are created by finding random chromosomes that are "packable"
     """
-    packed_count = population_size // 2
-    random_count = population_size - packed_count
+    random_count = population_size // 2
+    fixed_count = population_size - random_count
 
     # 1. Create purely random individuals
     pop = [Individual(problem) for _ in range(random_count)]
-    
-    # 2. Create capacity-packed individuals
-    for _ in range(packed_count):
-        # Start with a random permutation of customers to process
-        remaining_customers = list(range(1, problem.num_customers + 1))
-        random.shuffle(remaining_customers)
-        
-        packed_chromosome = []
-        
-        # Keep creating routes until all customers are served
-        while remaining_customers:
-            current_route = []
-            current_demand = 0
-            
-            # Iterate through available customers to fill one vehicle
-            # A copy is needed as we modify the list we are iterating over
-            for customer_id in remaining_customers[:]:
-                demand = problem.customer_demands[customer_id - 1]
-                if current_demand + demand <= problem.vehicle_capacity:
-                    current_route.append(customer_id)
-                    current_demand += demand
-                    # Remove customer from pool so it's not considered for the next vehicle
-                    remaining_customers.remove(customer_id)
 
-            # Add the customers for this packed vehicle to the chromosome
-            packed_chromosome.extend(current_route)
-        
-        # Add the new individual with the capacity-aware chromosome
-        pop.append(Individual(problem, chromosome=packed_chromosome))
-        
+    # 2. Create individuals by finding random chromosomes that are packable
+    packable_pop: list[Individual] = []
+    # Add a safety break to prevent potential infinite loops
+    max_attempts = fixed_count * 200
+    attempts = 0
+    while len(packable_pop) < fixed_count and attempts < max_attempts:
+        tmp_ind = Individual(problem)
+        if _is_packable(tmp_ind, problem):
+            packable_pop.append(tmp_ind)
+        attempts += 1
+
+    # If not enough packable individuals were found, fill with random ones
+    if len(packable_pop) < fixed_count:
+        print(f"Warning: Could only find {len(packable_pop)}/{fixed_count} packable individuals. Filling rest randomly.")
+        needed = fixed_count - len(packable_pop)
+        packable_pop.extend([Individual(problem) for _ in range(needed)])
+    else:
+        print(f"Found {len(packable_pop)} packable individuals.. lets go")
+    
+
+    pop.extend(packable_pop)
     return pop
+
+
+def _is_packable(ind: Individual, problem: ProblemInstance) -> bool:
+    """
+    Checks if a chromosome is "packable" by assigning customers to vehicles
+    in the order they appear, starting a new vehicle only when the current
+    one is full. Returns True if the number of vehicles used does not exceed
+    the available number of vehicles.
+    """
+    chromosome = ind.chromosome
+    demands = problem.customer_demands
+    capacity = problem.vehicle_capacity
+    num_vehicles = problem.num_vehicles
+
+    if not chromosome:
+        return True  # An empty chromosome is packable (uses 0 vehicles)
+
+    vehicles_used = 1
+    current_load = 0
+
+    for customer_id in chromosome:
+        # customer IDs are 1-based, but demands list is 0-indexed
+        customer_demand = demands[customer_id - 1]
+
+        if current_load + customer_demand <= capacity:
+            current_load += customer_demand
+        else:
+            # Current vehicle is full, start a new one
+            vehicles_used += 1
+            if vehicles_used > num_vehicles:
+                return False  # Exceeded available vehicles
+            # The new vehicle starts with the current customer
+            current_load = customer_demand
+    
+    return True
 
 
 def run_nsga2(
@@ -62,7 +88,7 @@ def run_nsga2(
     pc: float,
     pm: float,
     population_size: int,
-) -> bool:
+) -> tuple[list[Individual], float, int]:
     ## create population
     pop: list[Individual] = create_valid_pop(problem, population_size)
     
@@ -115,6 +141,7 @@ def run_nsga2(
 
         # Build mating pool via tournament selection
         mating_pool: list[Individual] = [tournament_selection(pop) for _ in range(population_size)]
+        random.shuffle(mating_pool)
 
         # Variation: create offspring of size N
         offspring: list[Individual] = []
@@ -163,14 +190,10 @@ def run_nsga2(
 
     end_time = time.time()
     runtime = end_time - start_time
-
     # Final front from the final population
     final_fronts = fast_non_dominated_sort(pop)
     final_front = final_fronts[0] if final_fronts else []
 
-    # Return True for backward compatibility; main should use logger to persist
-    # For now, we could adapt to return results if needed
-    # But keep signature as requested
     return final_front, runtime, evaluations
 
 def run_spea2(

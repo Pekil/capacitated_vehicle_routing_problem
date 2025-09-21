@@ -63,41 +63,50 @@ def fast_non_dominated_sort(population: List[Individual]) -> List[List[Individua
     return fronts_as_inds
 
 
-def calculate_crowding_distance(front: List[Individual]) -> None:
+def calculate_crowding_distance(front: list[Individual]) -> None:
     """Compute crowding distance for a single front in-place.
 
     - Sets individual.crowding_distance.
     - Boundary solutions for each objective receive infinite distance.
     """
     n = len(front)
-    if n == 0:
-        return
-    if n == 1:
-        front[0].crowding_distance = float('inf')
+    if n <= 2:
+        # For fronts with 0, 1, or 2 solutions, all get infinite distance
+        for ind in front:
+            ind.crowding_distance = float('inf')
         return
 
-    # Initialize
+    # Initialize all distances to zero
     for ind in front:
         ind.crowding_distance = 0.0
 
     num_objectives = 2  # total_distance, longest_route
+
+    # --- STAGE 1: Calculate and sum the distances for interior points ---
+    # This must be done for all objectives before assigning infinite distance
+    # to boundaries to prevent summed distances from being overwritten.
     for m in range(num_objectives):
-        # Sort by objective m
+        # Sort by the current objective to find neighbors
         front.sort(key=lambda ind: ind.objectives[m])
         min_val = front[0].objectives[m]
         max_val = front[-1].objectives[m]
 
-        # Assign infinite distance to boundary points
-        front[0].crowding_distance = float('inf')
-        front[-1].crowding_distance = float('inf')
-
+        # Avoid division by zero if all values are the same
         if max_val == min_val:
-            # All points identical on this objective; skip distance accumulation
             continue
 
+        # Add the normalized distance for all interior points
         for i in range(1, n - 1):
             prev_val = front[i - 1].objectives[m]
             next_val = front[i + 1].objectives[m]
             front[i].crowding_distance += (next_val - prev_val) / (max_val - min_val)
+
+    # --- STAGE 2: Assign infinite distance to all boundary points ---
+    # An individual gets infinite distance if it's a boundary for *any* objective.
+    for m in range(num_objectives):
+        # Sort again to be sure we identify the correct boundaries
+        front.sort(key=lambda ind: ind.objectives[m])
+        front[0].crowding_distance = float('inf')
+        front[-1].crowding_distance = float('inf')
 
 
