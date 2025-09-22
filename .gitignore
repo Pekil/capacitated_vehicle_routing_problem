@@ -1,5 +1,35 @@
-.VIRTUAL_ENV
-.venv
+# Virtual Environment
+venv/
+.venv/
+.VIRTUAL_ENV/
+env/
+ENV/
+
+# Python
 *.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
 /data/generations
 /data/experiments
+
+# Logs
+*.log
+logs/
