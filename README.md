@@ -1,8 +1,8 @@
 # Capacitated Vehicle Routing Problem (CVRP) Solver
 
-This project implements a Genetic Algorithm to solve the Capacitated Vehicle Routing Problem using CVRPLIB dataset instances.
+This project implements Multi-Objective Evolutionary Algorithms (MOEAs) to solve the Multi-Objective Capacitated Vehicle Routing Problem using CVRPLIB dataset instances.
 
-## Setup Virtual Environment (REQUIRED)
+## Setup Virtual Environment
 
 Modern Python installations require using virtual environments to avoid conflicts. Follow these steps:
 
@@ -30,73 +30,71 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. When Finished - Deactivate
-
-```bash
-deactivate
-```
-
-
-
 
 ## How to Run
 
-**: If already set up, activate your virtual environment before running!**
+**IMPORTANT: Always activate your virtual environment first!**
 
 ```bash
 source venv/bin/activate  # Activate virtual environment
 ```
 
-### 1. Basic Run - Load and Display Problem Instances
+### Run Multi-Objective CVRP Experiments
 
 ```bash
 python main.py
 ```
 
-This will:
-- Load all problem instances from the `data/` folder
-- Display information about each problem
-- Show that the instances are loaded successfully
+This will run NSGA-II on all available datasets with multiple parameter configurations:
+- **Datasets**: A-n33-k6, B-n35-k5, X-n110-k13
+- **Algorithm**: NSGA-II (Non-dominated Sorting Genetic Algorithm II)
+- **Parameter sets**: Baseline, Deep Search, High Exploration
+- **Objectives**: Total distance + Route balance (longest route)
 
-### 2. Run Genetic Algorithm (if implemented)
+**Output**: Results are logged to `results/` directory with detailed performance metrics.
 
-```bash
-python main.py -run -s A-n33-k6 --gen 1000 --pc 0.9 --pm 0.1
-```
 
-Parameters:
-- `-s`: Problem instance name (e.g., A-n33-k6)
-- `--gen`: Number of generations (e.g., 1000)
-- `--pc`: Crossover probability (e.g., 0.9)
-- `--pm`: Mutation probability (e.g., 0.1)
 
-### 3. Run Experiments (if implemented)
-
-```bash
-python run_experiments.py
-```
-
-This will run multiple experiments with different parameter settings.
+*Note: This is currently a placeholder framework for systematic experimentation.*
 
 ## Project Structure
 
 ```
-├── main.py                 # Main entry point
-├── run_experiments.py      # Experiment runner
+├── main.py                 # Main entry point - runs NSGA-II experiments
+├── run_experiments.py      # Systematic experiment framework (legacy)
 ├── requirements.txt        # Python dependencies
 ├── venv/                   # Virtual environment (created by you)
+├── results/                # Output directory for experiment results
 ├── data/                   # CVRP problem instances
-│   ├── A-n33-k6.txt       # Small problems (32-34 customers)
-│   ├── B-n35-k5.txt       # Medium problems (35-38 customers)
-│   └── X-n101-k25.txt     # Large problems (101+ customers)
+│   ├── A-n33-k6.txt       # Small problem (33 customers, 6 vehicles)
+│   ├── B-n35-k5.txt       # Medium problem (35 customers, 5 vehicles)
+│   ├── X-n110-k13.txt     # Large problem (110 customers, 13 vehicles)
+│   └── ...                # Other CVRPLIB instances
 └── src/
     ├── vrp/               # Problem loading and representation
-    │   ├── load_set.py    # Load CVRP files
-    │   └── problem.py     # Problem instance class
-    └── ga/                # Genetic Algorithm components
-        ├── individual.py  # Solution representation
-        ├── fitness.py     # Fitness evaluation
-        ├── operators.py   # Crossover and mutation
-        └── run_sim.py     # Main GA loop
+    │   ├── load_set.py    # Load CVRPLIB files
+    │   └── problem.py     # Problem instance class with distance matrix
+    └── ga/                # Multi-Objective Genetic Algorithm components
+        ├── algorithms.py  # NSGA-II implementation
+        ├── individual.py  # Multi-objective solution representation
+        ├── fitness.py     # Multi-objective fitness evaluation
+        ├── operators.py   # PMX crossover and swap mutation
+        ├── pareto_selection.py  # Non-dominated sorting and crowding distance
+        ├── selection.py   # Tournament selection
+        └── logger.py      # Results logging and analysis
 ```
+
+## Data Files
+
+The `data/` folder contains CVRP instances from CVRPLIB:
+- **A-n33-k6**: Small problem (33 customers, 6 vehicles, capacity=100)
+- **B-n35-k5**: Medium problem (35 customers, 5 vehicles) 
+- **X-n110-k13**: Large problem (110 customers, 13 vehicles)
+
+Each file contains:
+- Customer coordinates (x, y)
+- Customer demands 
+- Vehicle capacity
+- Depot location (node 1)
+
 
