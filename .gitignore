@@ -30,6 +30,3 @@ Thumbs.db
 /data/generations
 /data/experiments
 
-# Logs
-*.log
-logs/
