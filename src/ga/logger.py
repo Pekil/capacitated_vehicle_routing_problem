@@ -1,80 +1,55 @@
 import os
 import csv
 import json
-import numpy as np
+from typing import List, Dict, Any
 
-# Handles saving logs and metadata for each run
-class GenerationLogger:
-    def __init__(self, problem_instance, output_dir=None):
-        # Pick where to save logs (default or custom)
-        if output_dir is None:
-            base_dir = "data/generations"
-            self.output_dir = os.path.join(base_dir, problem_instance.name)
-        else:
-            self.output_dir = output_dir
+from src.vrp.problem import ProblemInstance
+from src.ga.individual import Individual
 
-        os.makedirs(self.output_dir, exist_ok=True)
-        self._write_metadata(problem_instance)
-        self.log_file_path = os.path.join(self.output_dir, 'log.csv')
-        # Start the log file with headers
-        with open(self.log_file_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                'generation',
-                'best_fitness',
-                'average_fitness',
-                'worst_fitness',
-                'best_routes'
-            ])
 
-    def _write_metadata(self, problem_instance):
-        # Save info about the scenario/run
-        metadata_path = os.path.join(self.output_dir, 'metadata.json')
-        metadata = {
-            "scenario_name": problem_instance.name,
-            "num_vehicles": problem_instance.num_vehicles,
-            "num_customers": problem_instance.num_customers,
-            "vehicle_capacity": problem_instance.vehicle_capacity,
-            "toughness": problem_instance.toughness
-        }
-        with open(metadata_path, 'w') as f:
-            json.dump(metadata, f, indent=4)
+def _ensure_dir(path: str) -> None:
+    os.makedirs(path, exist_ok=True)
 
-    def log_generation(self, generation_number, all_fitness_values, best_fitness, best_routes):
-        # Add a row to the log for this generation
-        if not all_fitness_values:
-            return
-        valid_fitness_values = [f for f in all_fitness_values if f != float('inf')]
-        avg_fitness = np.mean(valid_fitness_values) if valid_fitness_values else float('inf')
-        worst_fitness = max(all_fitness_values)
 
-        routes_str = ';'.join(["-".join(map(str, route)) for route in best_routes])
+def log_run_results(
+    output_base_dir: str,
+    problem: ProblemInstance,
+    params: Dict[str, Any],
+    run_id: int,
+    runtime: float,
+    evaluations: int,
+    final_front: List[Individual]
+) -> None:
+    """Persist results of a NSGA-II run in a structured directory.
 
-        with open(self.log_file_path, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                generation_number,
-                best_fitness,
-                avg_fitness,
-                worst_fitness,
-                routes_str
-            ])
+    Directory layout:
+      {output_base_dir}/{problem.name}/{params['name']}/run_{run_id}/
+        - summary.json
+        - final_pareto_front.csv
+    """
+    run_dir = os.path.join(output_base_dir, problem.name, params.get('name', 'default'), f"run_{run_id}")
+    _ensure_dir(run_dir)
 
-    def log_initial_population(self, evaluated_population):
-        if not evaluated_population:
-            return
-            
-        evaluated_population.sort(key=lambda x: x["fitness"])
-        best_solution = evaluated_population[0]
-        
-        all_fitness_values = [sol["fitness"] for sol in evaluated_population]
-        
-        self.log_generation(0, all_fitness_values, best_solution['fitness'], best_solution['routes'])
-        
-        gen_0_path = os.path.join(self.output_dir, 'gen_0.csv')
-        with open(gen_0_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['chromosome', 'fitness'])
-            for sol in evaluated_population:
-                chromosome_str = "-".join(map(str, sol['individual'].chromosome))
-                writer.writerow([chromosome_str, sol['fitness']])
+    # summary.json
+    summary = {
+        "problem_name": problem.name,
+        "parameter_set_name": params.get('name', 'default'),
+        "run_id": run_id,
+        "wall_clock_time_sec": runtime,
+        "total_evaluations": evaluations,
+        "num_vehicles": problem.num_vehicles,
+        "num_customers": problem.num_customers,
+        "vehicle_capacity": problem.vehicle_capacity,
+    }
+    with open(os.path.join(run_dir, 'summary.json'), 'w') as f:
+        json.dump(summary, f, indent=2)
+
+    # final_pareto_front.csv
+    with open(os.path.join(run_dir, 'final_pareto_front.csv'), 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["total_distance", "max_route_length", "chromosome", "routes"]) 
+        for ind in final_front:
+            td, mr = ind.objectives
+            chromosome_str = "-".join(map(str, ind.chromosome))
+            routes_str = ";".join(["-".join(map(str, r)) for r in ind.routes])
+            writer.writerow([td, mr, chromosome_str, routes_str])
