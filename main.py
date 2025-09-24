@@ -8,9 +8,11 @@ from src.ga.pareto_selection import fast_non_dominated_sort
 from src.ga.logger import log_run_results
 import glob
 import time
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
 
 ## -- Configuration -- ##
-runs_per = 1 # TODO: change to 20
+runs_per = 20
 output_base_dir = "results"
 parameter_sets = [
     {
@@ -63,66 +65,86 @@ def load_CVRP() -> ProblemSet:
 
     return problem_instances
 
+def run_and_log_nsga2(run_args):
+    """Helper function to run NSGA-II and log results, designed for parallel execution."""
+    problem, evaluator, param_set, run_idx, base_dir = run_args
+    final_front, runtime, evaluations = run_nsga2(
+        problem,
+        evaluator,
+        param_set["generations"],
+        param_set["crossover_prob"],
+        param_set["mutation_prob"],
+        param_set["population_size"]
+    )
+    log_run_results(
+        f"{base_dir}/NSGA-II",
+        problem,
+        param_set,
+        run_idx,
+        runtime,
+        evaluations,
+        final_front
+    )
+    print(f"NSGA-II Run {run_idx + 1}/{runs_per} for {problem.name} ({param_set['name']}) ok.")
+
+def run_and_log_spea2(run_args):
+    """Helper function to run SPEA2 and log results, designed for parallel execution."""
+    problem, evaluator, param_set, run_idx, base_dir = run_args
+    final_front, runtime, evaluations = run_spea2(
+        problem,
+        evaluator,
+        param_set["generations"],
+        param_set["crossover_prob"],
+        param_set["mutation_prob"],
+        param_set["population_size"],
+        param_set["archive_size"]
+    )
+    log_run_results(
+        f"{base_dir}/SPEA2",
+        problem,
+        param_set,
+        run_idx,
+        runtime,
+        evaluations,
+        final_front
+    )
+    print(f"SPEA2 Run {run_idx + 1}/{runs_per} for {problem.name} ({param_set['name']}) ok.")
+
 ## -- Main Function -- ##
 def main():
-    ## load problem instances into memory && error handling
     problem_instances: ProblemSet = load_CVRP()
-    if problem_instances:
-        print('Problem instances loaded successfully')
-    ## create fitness evaluator
-    fitnessEvaluators = [
-        FitnessEvaluator(problem_instance)
-        for problem_instance in problem_instances
-    ]
-    
-    ## run NSGA-II for each problem instance and parameter set
-    for i in range(len(problem_instances)):
-        for parameter_set in parameter_sets:
-            for run in range(runs_per):
-                start = time.time()
+    if not problem_instances:
+        print("No problem instances loaded. Exiting.")
+        return
 
-                # Run NSGA-II
-                final_front_nsga2, runtime_nsga2, evaluations_nsga2 = run_nsga2(
-                    problem_instances[i],
-                    fitnessEvaluators[i],
-                    parameter_set["generations"],
-                    parameter_set["crossover_prob"],
-                    parameter_set["mutation_prob"],
-                    parameter_set["population_size"]
-                )
+    fitness_evaluators = [FitnessEvaluator(p) for p in problem_instances]
 
-                log_run_results(
-                    f"{output_base_dir}/NSGA-II", 
-                    problem_instances[i], 
-                    parameter_set, 
-                    run, 
-                    runtime_nsga2, 
-                    evaluations_nsga2, 
-                    final_front_nsga2
+    with ProcessPoolExecutor() as executor:
+        for i, (problem, evaluator) in enumerate(zip(problem_instances, fitness_evaluators)):
+            for param_set in parameter_sets:
+                # Prepare arguments for parallel NSGA-II runs
+                nsga2_args = zip(
+                    repeat(problem),
+                    repeat(evaluator),
+                    repeat(param_set),
+                    range(runs_per),
+                    repeat(output_base_dir)
                 )
-                print(f"NSGA-II Run {run + 1}/{runs_per} for {problem_instances[i].name} ({parameter_set['name']}) ok. Logged results.")
-                
-                # Run SPEA2
-                final_front_spea2, runtime_spea2, evaluations_spea2 = run_spea2(
-                    problem_instances[i],
-                    fitnessEvaluators[i],
-                    parameter_set["generations"],
-                    parameter_set["crossover_prob"],
-                    parameter_set["mutation_prob"],
-                    parameter_set["population_size"],
-                    parameter_set["archive_size"]
-                )
+                # Run NSGA-II simulations in parallel
+                executor.map(run_and_log_nsga2, nsga2_args)
 
-                log_run_results(
-                    f"{output_base_dir}/SPEA2",
-                    problem_instances[i],
-                    parameter_set,
-                    run,
-                    runtime_spea2,
-                    evaluations_spea2,
-                    final_front_spea2
+                # Prepare arguments for parallel SPEA2 runs
+                spea2_args = zip(
+                    repeat(problem),
+                    repeat(evaluator),
+                    repeat(param_set),
+                    range(runs_per),
+                    repeat(output_base_dir)
                 )
-                print(f"SPEA2 Run {run + 1}/{runs_per} for {problem_instances[i].name} ({parameter_set['name']}) ok. Logged results.")
+                # Run SPEA2 simulations in parallel
+                executor.map(run_and_log_spea2, spea2_args)
+
     return 0
+
 if __name__ == "__main__":
     main()
