@@ -16,6 +16,7 @@ parameter_sets = [
     {
         "name": "Baseline",
         "population_size": 100,
+        "archive_size": 100,
         "generations": 500,
         "crossover_prob": 0.7,
         "mutation_prob": 0.2,
@@ -24,6 +25,7 @@ parameter_sets = [
     {
         "name": "Deep Search",
         "population_size": 50,
+        "archive_size": 50,
         "generations": 1000,
         "crossover_prob": 0.7,
         "mutation_prob": 0.2,
@@ -32,6 +34,7 @@ parameter_sets = [
     {
         "name": "High Exploration",
         "population_size": 100,
+        "archive_size": 100,
         "generations": 500,
         "crossover_prob": 0.6,
         "mutation_prob": 0.4, # Higher mutation rate
@@ -78,7 +81,8 @@ def main():
             for run in range(runs_per):
                 start = time.time()
 
-                final_front, runtime, evaluations = run_nsga2(
+                # Run NSGA-II
+                final_front_nsga2, runtime_nsga2, evaluations_nsga2 = run_nsga2(
                     problem_instances[i],
                     fitnessEvaluators[i],
                     parameter_set["generations"],
@@ -88,15 +92,37 @@ def main():
                 )
 
                 log_run_results(
-                    output_base_dir, 
+                    f"{output_base_dir}/NSGA-II", 
                     problem_instances[i], 
                     parameter_set, 
                     run, 
-                    runtime, 
-                    evaluations, 
-                    final_front
+                    runtime_nsga2, 
+                    evaluations_nsga2, 
+                    final_front_nsga2
                 )
-                print(f"Run {run + 1}/{runs_per} for {problem_instances[i].name} ({parameter_set['name']}) ok. Logged results.")# For now, reconstruct final front from current e
+                print(f"NSGA-II Run {run + 1}/{runs_per} for {problem_instances[i].name} ({parameter_set['name']}) ok. Logged results.")
+                
+                # Run SPEA2
+                final_front_spea2, runtime_spea2, evaluations_spea2 = run_spea2(
+                    problem_instances[i],
+                    fitnessEvaluators[i],
+                    parameter_set["generations"],
+                    parameter_set["crossover_prob"],
+                    parameter_set["mutation_prob"],
+                    parameter_set["population_size"],
+                    parameter_set["archive_size"]
+                )
+
+                log_run_results(
+                    f"{output_base_dir}/SPEA2",
+                    problem_instances[i],
+                    parameter_set,
+                    run,
+                    runtime_spea2,
+                    evaluations_spea2,
+                    final_front_spea2
+                )
+                print(f"SPEA2 Run {run + 1}/{runs_per} for {problem_instances[i].name} ({parameter_set['name']}) ok. Logged results.")
     return 0
 if __name__ == "__main__":
     main()

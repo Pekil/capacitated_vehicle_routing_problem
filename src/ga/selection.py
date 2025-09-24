@@ -27,3 +27,18 @@ def tournament_selection(population: List[Individual]) -> Individual:
     return a if a.crowding_distance >= b.crowding_distance else b
 
 
+def spea2_tournament_selection(archive: List[Individual]) -> Individual:
+    """
+    Binary tournament selection for SPEA2.
+    The winner is the individual with the lower spea2_fitness score.
+    """
+    if len(archive) == 1:
+        return archive[0]
+
+    i1, i2 = random.sample(range(len(archive)), k=2)
+    a = archive[i1]
+    b = archive[i2]
+
+    return a if a.spea2_fitness <= b.spea2_fitness else b
+
+

@@ -22,6 +22,9 @@ class Individual:
         # NSGA-II metadata
         self.pareto_rank = -1
         self.crowding_distance = 0.0
+        # SPEA2 metadata
+        self.spea2_fitness = float('inf')
+        self.kth_distance = float('inf')
 
     def set_evaluation(self, fitness_values, routes):
         # fitness_values is a tuple[float, float] from FitnessEvaluator
