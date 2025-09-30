@@ -31,8 +31,12 @@ def spea2_tournament_selection(archive: List[Individual]) -> Individual:
     """
     Binary tournament selection for SPEA2.
     The winner is the individual with the lower spea2_fitness score.
+    Handles cases where the archive is too small for a 2-person tournament.
     """
-    if len(archive) == 1:
+    if not archive:
+        raise ValueError("Cannot perform tournament selection on an empty archive.")
+    
+    if len(archive) < 2:
         return archive[0]
 
     i1, i2 = random.sample(range(len(archive)), k=2)

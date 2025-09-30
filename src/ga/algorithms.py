@@ -9,6 +9,25 @@ from src.ga.spea2_fitness import calculate_spea2_fitness
 import time
 import sys
 import random
+import json
+import os
+
+
+def save_population_chromosomes(population: list[Individual], file_path: str):
+    """Saves the chromosomes of a list of Individuals to a JSON file."""
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    chromosome_list = [ind.chromosome for ind in population]
+    with open(file_path, 'w') as f:
+        json.dump(chromosome_list, f)
+
+def load_population_from_file(problem: ProblemInstance, file_path: str) -> list[Individual]:
+    """Loads a list of chromosomes from a JSON file and creates a population."""
+    with open(file_path, 'r') as f:
+        chromosome_list = json.load(f)
+    
+    return [Individual(problem, chromosome=chromo) for chromo in chromosome_list]
 
 
 def create_valid_pop(problem: ProblemInstance, population_size: int) -> list[Individual]:
@@ -89,9 +108,14 @@ def run_nsga2(
     pc: float,
     pm: float,
     population_size: int,
+    initial_pop: list[Individual] | None = None
 ) -> tuple[list[Individual], float, int]:
     ## create population
-    pop: list[Individual] = create_valid_pop(problem, population_size)
+    if initial_pop:
+        pop = initial_pop
+    else:
+        # Fallback for old behavior if needed
+        pop = create_valid_pop(problem, population_size)
     
     sys.stdout.flush()
     print(f"""
@@ -203,12 +227,18 @@ def run_spea2(
     pm: float,
     population_size: int,
     archive_size: int,
+    initial_pop: list[Individual] | None = None
 ) -> tuple[list[Individual], float, int]:
     """
     Implementation of the Strength Pareto Evolutionary Algorithm 2 (SPEA2).
     """
-    # Step 1: Initialization
-    pop = create_valid_pop(problem, population_size)
+    # --- MODIFICATION ---
+    if initial_pop:
+        pop = initial_pop
+    else:
+        # Fallback for old behavior if needed
+        pop = create_valid_pop(problem, population_size)
+    # --- END MODIFICATION ---
     archive = []
     
     print(f"""
@@ -238,16 +268,17 @@ def run_spea2(
         
         # B. Environmental Selection
         combined_pop = pop + archive
+        
+        
         next_archive = [ind for ind in combined_pop if ind.spea2_fitness < 1]
 
         # Manage Archive Size
         if len(next_archive) > archive_size:
-            # Archive Overflow: Truncate by removing individuals with the smallest k-th distance
-            while len(next_archive) > archive_size:
-                # Recalculate density for the current archive to be precise
-                calculate_spea2_fitness([], next_archive) 
-                next_archive.sort(key=lambda ind: ind.kth_distance)
-                next_archive.pop(0)
+            # --- FIXED ARCHIVE TRUNCATION ---
+            # The density (kth_distance) is already calculated for the combined population by the
+            # calculate_spea2_fitness call above. We just need to sort and slice.
+            next_archive.sort(key=lambda ind: ind.kth_distance)
+            archive = next_archive[:archive_size]
 
         elif len(next_archive) < archive_size:
             # Archive Underflow: Fill with the best dominated individuals
@@ -255,14 +286,23 @@ def run_spea2(
             dominated_individuals.sort(key=lambda ind: ind.spea2_fitness)
             fill_count = archive_size - len(next_archive)
             next_archive.extend(dominated_individuals[:fill_count])
-            
-        archive = next_archive
+            archive = next_archive
+        else:
+            # Archive is exactly the right size
+            archive = next_archive
 
         # C. Termination Check
         if g == generations - 1:
             break
 
         # D. Mating Pool & Offspring Creation
+        # -- FIX -- Check if archive is empty, if so populate with best from pop
+        if not archive:
+            print(f"Archive empty at gen {g+1}, repopulating from current population.")
+            # Sort population by SPEA2 fitness (lower is better) and pick the best
+            pop.sort(key=lambda ind: ind.spea2_fitness)
+            archive.extend(pop[:archive_size])
+
         mating_pool = [spea2_tournament_selection(archive) for _ in range(population_size)]
         
         offspring = []

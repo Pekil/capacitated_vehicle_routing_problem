@@ -51,15 +51,21 @@ def _calculate_density(combined_pop: List[Individual]) -> List[float]:
     Density is based on the k-th nearest neighbor distance.
     """
     num_individuals = len(combined_pop)
-    k = int(math.sqrt(num_individuals))
+    if num_individuals <= 1:
+        if num_individuals == 1:
+             combined_pop[0].kth_distance = float('inf')
+        return [0.0] * num_individuals
 
-    # Store distances to avoid recalculation
-    distances = np.zeros((num_individuals, num_individuals))
+    k = int(math.sqrt(num_individuals))
+    # k must be less than the number of individuals to find a k-th neighbor
+    k = min(k, num_individuals - 1)
+
     objectives = np.array([ind.objectives for ind in combined_pop])
     
-    # Efficiently calculate all-pairs Euclidean distances
-    for i in range(num_individuals):
-        distances[i, :] = np.linalg.norm(objectives - objectives[i], axis=1)
+    # --- OPTIMIZED DISTANCE CALCULATION ---
+    # Use broadcasting to compute all-pairs Euclidean distances in a vectorized manner
+    diff = objectives[:, np.newaxis, :] - objectives[np.newaxis, :, :]
+    distances = np.sqrt(np.sum(diff**2, axis=-1))
 
     densities = []
     for i in range(num_individuals):
