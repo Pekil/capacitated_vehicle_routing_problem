@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import pandas as pd
+import argparse
+import os
 
 # Plots the VRP scenario and routes
 class Plotter:
@@ -111,3 +114,36 @@ class Plotter:
         )
         
         self.show()
+
+def plot_pareto_front(csv_file_path):
+    """
+    Plots the Pareto front from a final_pareto_front.csv file.
+    """
+    if not os.path.exists(csv_file_path):
+        print(f"Error: File not found at {csv_file_path}")
+        return
+
+    df = pd.read_csv(csv_file_path)
+
+    if "total_distance" not in df.columns or "max_route_length" not in df.columns:
+        print("Error: CSV file must contain 'total_distance' and 'max_route_length' columns.")
+        return
+
+    fig, ax = plt.subplots()
+    ax.scatter(df["total_distance"], df["max_route_length"], c='blue', marker='o', label='Solutions')
+
+    ax.set_title("Pareto Front")
+    ax.set_xlabel("Total Distance")
+    ax.set_ylabel("Max Route Length")
+    ax.grid(True)
+    ax.legend()
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Plot a Pareto front from a results file.")
+    parser.add_argument("csv_file", help="Path to the final_pareto_front.csv file.")
+    args = parser.parse_args()
+    
+    plot_pareto_front(args.csv_file)

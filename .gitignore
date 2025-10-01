@@ -29,6 +29,7 @@ Thumbs.db
 # Project specific
 /data/generations
 /data/experiments
+/data/process_logs
 
 # Results
 /results/

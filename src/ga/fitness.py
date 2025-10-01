@@ -8,13 +8,14 @@ class FitnessEvaluator:
     def __init__(self, problem_instance):
         self.problem = problem_instance
 
-    def evaluate(self, individual):
-        # Figure out the best way to split the route for the available vehicles
+    def evaluate(self, individual: Individual) -> None:
+        """
+        Calculates the multi-objective fitness of an individual and updates it in-place.
+        """
         chromosome = individual.chromosome
         num_vehicles = self.problem.num_vehicles
         fitness_values, best_routes = self._optimal_split(chromosome, num_vehicles)
-        individual.fitness = fitness_values
-        return fitness_values, best_routes
+        individual.set_evaluation(fitness_values, best_routes)
 
     def _optimal_split(self, chromosome, num_vehicles) -> tuple[FitnessSet, list[list[int]]]:
         # Implements the Split algorithm using dynamic programming to find the optimal

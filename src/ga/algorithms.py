@@ -3,11 +3,31 @@ from src.ga.fitness import FitnessEvaluator
 from src.ga.individual import Individual
 from src.ga.operators import pmx_crossover, swap_mutation
 from src.ga.pareto_selection import fast_non_dominated_sort, calculate_crowding_distance
-from src.ga.selection import tournament_selection
+from src.ga.selection import tournament_selection, spea2_tournament_selection
+from src.ga.spea2_fitness import calculate_spea2_fitness
 
 import time
 import sys
 import random
+import json
+import os
+
+
+def save_population_chromosomes(population: list[Individual], file_path: str):
+    """Saves the chromosomes of a list of Individuals to a JSON file."""
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    chromosome_list = [ind.chromosome for ind in population]
+    with open(file_path, 'w') as f:
+        json.dump(chromosome_list, f)
+
+def load_population_from_file(problem: ProblemInstance, file_path: str) -> list[Individual]:
+    """Loads a list of chromosomes from a JSON file and creates a population."""
+    with open(file_path, 'r') as f:
+        chromosome_list = json.load(f)
+    
+    return [Individual(problem, chromosome=chromo) for chromo in chromosome_list]
 
 
 def create_valid_pop(problem: ProblemInstance, population_size: int) -> list[Individual]:
@@ -88,9 +108,14 @@ def run_nsga2(
     pc: float,
     pm: float,
     population_size: int,
+    initial_pop: list[Individual] | None = None
 ) -> tuple[list[Individual], float, int]:
     ## create population
-    pop: list[Individual] = create_valid_pop(problem, population_size)
+    if initial_pop:
+        pop = initial_pop
+    else:
+        # Fallback for old behavior if needed
+        pop = create_valid_pop(problem, population_size)
     
     sys.stdout.flush()
     print(f"""
@@ -105,8 +130,7 @@ def run_nsga2(
 
     ## evaluate and store results in individuals
     for indiv in pop:
-        fitness_values, routes = evaluator.evaluate(indiv)
-        indiv.set_evaluation(fitness_values, routes)
+        evaluator.evaluate(indiv)
 
     # -- Initial Population Logging --
     total_distances = [ind.objectives[0] for ind in pop]
@@ -119,13 +143,13 @@ def run_nsga2(
     best_longest_route = min(longest_routes)
 
     print(f"""
-        Unique Solutions: {len(unique_chromosomes)}/{population_size}
-        Total Distance (Avg): {avg_total_dist:.2f}
-        Total Distance (Best): {best_total_dist:.2f}
-        Longest Route (Avg): {avg_longest_route:.2f}
-        Longest Route (Best): {best_longest_route:.2f}
-        -------------------------------------
-    """)
+            Unique Solutions: {len(unique_chromosomes)}/{population_size}
+            Total Distance (Avg): {avg_total_dist:.2f}
+            Total Distance (Best): {best_total_dist:.2f}
+            Longest Route (Avg): {avg_longest_route:.2f}
+            Longest Route (Best): {best_longest_route:.2f}
+            -------------------------------------
+        """)
 
     start_time = time.time()
     evaluations = len(pop)  # initial evaluations
@@ -157,8 +181,7 @@ def run_nsga2(
 
         # Evaluate offspring
         for child in offspring:
-            fitness_values, routes = evaluator.evaluate(child)
-            child.set_evaluation(fitness_values, routes)
+            evaluator.evaluate(child)
         evaluations += len(offspring)
 
         # Environmental selection: combine and select next generation
@@ -202,6 +225,115 @@ def run_spea2(
     generations: int,
     pc: float,
     pm: float,
-    population: list[Individual]
-):
-    pass
+    population_size: int,
+    archive_size: int,
+    initial_pop: list[Individual] | None = None
+) -> tuple[list[Individual], float, int]:
+    """
+    Implementation of the Strength Pareto Evolutionary Algorithm 2 (SPEA2).
+    """
+    # --- MODIFICATION ---
+    if initial_pop:
+        pop = initial_pop
+    else:
+        # Fallback for old behavior if needed
+        pop = create_valid_pop(problem, population_size)
+    # --- END MODIFICATION ---
+    archive = []
+    
+    print(f"""
+        --------------------------------
+        SPEA2 Start
+        Problem: {problem.name}
+        Generations: {generations}
+        Population size: {population_size}
+        Archive size: {archive_size}
+        Crossover probability: {pc}
+        Mutation probability: {pm}
+        -------------------------------------
+    """)
+    sys.stdout.flush()
+
+    # Evaluate initial population
+    for ind in pop:
+        evaluator.evaluate(ind)
+    
+    evaluations = len(pop)
+    start_time = time.time()
+
+    # Step 2: Main Generational Loop
+    for g in range(generations):
+        # A. Fitness Assignment
+        calculate_spea2_fitness(pop, archive)
+        
+        # B. Environmental Selection
+        combined_pop = pop + archive
+        
+        
+        next_archive = [ind for ind in combined_pop if ind.spea2_fitness < 1]
+
+        # Manage Archive Size
+        if len(next_archive) > archive_size:
+            # --- FIXED ARCHIVE TRUNCATION ---
+            # The density (kth_distance) is already calculated for the combined population by the
+            # calculate_spea2_fitness call above. We just need to sort and slice.
+            next_archive.sort(key=lambda ind: ind.kth_distance)
+            archive = next_archive[:archive_size]
+
+        elif len(next_archive) < archive_size:
+            # Archive Underflow: Fill with the best dominated individuals
+            dominated_individuals = [ind for ind in combined_pop if ind.spea2_fitness >= 1]
+            dominated_individuals.sort(key=lambda ind: ind.spea2_fitness)
+            fill_count = archive_size - len(next_archive)
+            next_archive.extend(dominated_individuals[:fill_count])
+            archive = next_archive
+        else:
+            # Archive is exactly the right size
+            archive = next_archive
+
+        # C. Termination Check
+        if g == generations - 1:
+            break
+
+        # D. Mating Pool & Offspring Creation
+        # -- FIX -- Check if archive is empty, if so populate with best from pop
+        if not archive:
+            print(f"Archive empty at gen {g+1}, repopulating from current population.")
+            # Sort population by SPEA2 fitness (lower is better) and pick the best
+            pop.sort(key=lambda ind: ind.spea2_fitness)
+            archive.extend(pop[:archive_size])
+
+        mating_pool = [spea2_tournament_selection(archive) for _ in range(population_size)]
+        
+        offspring = []
+        for i in range(0, population_size, 2):
+            p1 = mating_pool[i % population_size]
+            p2 = mating_pool[(i + 1) % population_size]
+            c1, c2 = pmx_crossover(p1, p2, pc)
+            swap_mutation(c1, pm)
+            swap_mutation(c2, pm)
+            offspring.append(c1)
+            if len(offspring) < population_size:
+                offspring.append(c2)
+
+        # Evaluate offspring
+        for child in offspring:
+            evaluator.evaluate(child)
+        evaluations += len(offspring)
+
+        # E. Advance Generation
+        pop = offspring
+
+        # Progress output
+        step = max(1, generations // 20)
+        if (g + 1) % step == 0 or g == generations - 1:
+            best_td = min(ind.objectives[0] for ind in archive) if archive else float('inf')
+            best_lr = min(ind.objectives[1] for ind in archive) if archive else float('inf')
+            print(f"Gen {g+1}/{generations} | Archive Size: {len(archive)} | Best Total Dist: {best_td:.2f} | Best Longest Route: {best_lr:.2f}")
+            sys.stdout.flush()
+
+    end_time = time.time()
+    runtime = end_time - start_time
+    
+    # Step 3: Return Value
+    return archive, runtime, evaluations
