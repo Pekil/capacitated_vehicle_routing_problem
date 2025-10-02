@@ -18,6 +18,7 @@ __pycache__/
 /data/process_logs
 
 # Results
-/results/
-/results*/
+/results/initial_populations/
+/results/NSGA-II
+/results/SPEA2
 analysis_summary.csv

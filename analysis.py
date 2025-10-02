@@ -1,4 +1,3 @@
-
 import json
 import csv
 import glob
@@ -7,6 +6,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 import pandas as pd
 from pymoo.indicators.hv import HV
+from pymoo.indicators.spacing import SpacingIndicator # <-- 1. IMPORT SPACING
 import matplotlib.pyplot as plt
 
 # ============================================================================
@@ -68,7 +68,6 @@ def find_non_dominated_front(points: np.ndarray) -> np.ndarray:
     unique_points = np.unique(points, axis=0)
     is_dominated = np.zeros(len(unique_points), dtype=bool)
     for i, p1 in enumerate(unique_points):
-        # A point is dominated if any other point is better/equal on all objectives and strictly better on at least one.
         dominating_mask = np.all(unique_points <= p1, axis=1) & np.any(unique_points < p1, axis=1)
         if np.any(dominating_mask):
             is_dominated[i] = True
@@ -77,7 +76,8 @@ def find_non_dominated_front(points: np.ndarray) -> np.ndarray:
 
 def create_summary_csv(all_results: List[Dict]):
     """Create a CSV file containing summary statistics for all analyzed scenarios."""
-    headers = ["Problem", "Parameters", "Algorithm", "Mean Runtime (s)", "Std Dev Runtime (s)", "Mean Hypervolume", "Std Dev Hypervolume"]
+    # --- 2. ADD SPACING TO THE CSV HEADERS ---
+    headers = ["Problem", "Parameters", "Algorithm", "Mean Runtime (s)", "Std Dev Runtime (s)", "Mean Hypervolume", "Std Dev Hypervolume", "Mean Spacing", "Std Dev Spacing"]
     df = pd.DataFrame(all_results, columns=headers)
     df.sort_values(by=["Problem", "Parameters", "Algorithm"], inplace=True)
     output_filename = "analysis_summary.csv"
@@ -91,73 +91,36 @@ def create_summary_csv(all_results: List[Dict]):
 # ============================================================================
 
 def plot_problem_comparison(problem: str, problem_data: Dict, output_dir: str):
-    """
-    Generates a comprehensive plot showing the achieved Pareto front for each of the
-    six algorithm/parameter combinations for a single problem.
-    """
+    """Generates a comprehensive plot showing the achieved Pareto front for each combination."""
     plt.style.use('seaborn-v0_8-whitegrid')
     fig, ax = plt.subplots(figsize=(16, 10))
-
-    # Define a unique style for each of the 6 experimental setups
     styles = {
-        ('NSGA-II', 'Baseline'):         {'color': '#0e5fe3', 'linestyle': '-', 'marker': 'o'}, # Blue
-        ('NSGA-II', 'Deep Search'):       {'color': '#b512a2', 'linestyle': '--', 'marker': 's'}, # Light Blue
-        ('NSGA-II', 'High Exploration'): {'color': '#ba0b34', 'linestyle': ':', 'marker': '^'}, # Cyan
-        ('SPEA2', 'Baseline'):         {'color': '#c95b0c', 'linestyle': '-', 'marker': 'o'}, # Red
-        ('SPEA2', 'Deep Search'):       {'color': '#31bf11', 'linestyle': '--', 'marker': 's'}, # Light Red
-        ('SPEA2', 'High Exploration'): {'color': '#096360', 'linestyle': ':', 'marker': '^'}  # Orange
+        ('NSGA-II', 'Baseline'):         {'color': '#0e5fe3', 'linestyle': '-', 'marker': 'o'},
+        ('NSGA-II', 'Deep Search'):       {'color': '#b512a2', 'linestyle': '--', 'marker': 's'},
+        ('NSGA-II', 'High Exploration'): {'color': '#ba0b34', 'linestyle': ':', 'marker': '^'},
+        ('SPEA2', 'Baseline'):         {'color': '#c95b0c', 'linestyle': '-', 'marker': 'o'},
+        ('SPEA2', 'Deep Search'):       {'color': '#31bf11', 'linestyle': '--', 'marker': 's'},
+        ('SPEA2', 'High Exploration'): {'color': '#096360', 'linestyle': ':', 'marker': '^'}
     }
-
-    # Iterate through each of the 6 setups to plot its results
     for param_set in PARAMETER_SETS:
         for algorithm in ALGORITHMS:
             data = problem_data.get(param_set, {}).get(algorithm, {})
             fronts_np = data.get('fronts_np', [])
-            if not fronts_np:
-                continue
-
-            all_solutions_for_combo = np.vstack(fronts_np)
-            if all_solutions_for_combo.size == 0:
-                continue
-
-            # Calculate the achieved front FOR THIS SPECIFIC COMBINATION
-            achieved_front = find_non_dominated_front(all_solutions_for_combo)
+            if not fronts_np: continue
+            all_solutions = np.vstack(fronts_np)
+            if all_solutions.size == 0: continue
+            achieved_front = find_non_dominated_front(all_solutions)
             style = styles[(algorithm, param_set)]
             label = f'{algorithm} ({param_set})'
-
-            # 1. Plot ALL solution points with high transparency (low alpha)
-            ax.scatter(
-                all_solutions_for_combo[:, 0], all_solutions_for_combo[:, 1],
-                color=style['color'],
-                marker=style['marker'],
-                alpha=0.15,  # Very transparent
-                s=40,
-                edgecolors='none'
-            )
-
-            # 2. Plot the achieved front line with solid markers on top
+            ax.scatter(all_solutions[:, 0], all_solutions[:, 1], color=style['color'], marker=style['marker'], alpha=0.15, s=40, edgecolors='none')
             if achieved_front.size > 0:
-                ax.plot(
-                    achieved_front[:, 0], achieved_front[:, 1],
-                    color=style['color'],
-                    linestyle=style['linestyle'],
-                    linewidth=2.2,
-                    marker=style['marker'],
-                    markersize=7,
-                    label=label,
-                    markeredgecolor='k',
-                    markeredgewidth=0.5
-                )
-
-    # Finalize plot details
+                ax.plot(achieved_front[:, 0], achieved_front[:, 1], color=style['color'], linestyle=style['linestyle'], linewidth=2.2, marker=style['marker'], markersize=7, label=label, markeredgecolor='k', markeredgewidth=0.5)
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, labels, fontsize=12, title="Experimental Setups", title_fontsize=14, loc='best')
     ax.set_title(f'Achieved Pareto Fronts for Problem: {problem}', fontsize=20, fontweight='bold')
     ax.set_xlabel('Total Distance (Objective 1)', fontsize=16)
     ax.set_ylabel('Maximum Route Length (Objective 2)', fontsize=16)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    
-    # Save the plot
     filename = f"{problem}_fronts_comparison.png"
     filepath = os.path.join(output_dir, filename)
     plt.savefig(filepath, dpi=300, bbox_inches='tight')
@@ -176,7 +139,7 @@ def main():
     
     os.makedirs(PLOTS_DIR, exist_ok=True)
     
-    # --- Step 1: Load all data into a structured dictionary ---
+    # Step 1: Load all data
     print("\n--- Loading all summary and front data... ---")
     all_data = {p: {ps: {a: {} for a in ALGORITHMS} for ps in PARAMETER_SETS} for p in PROBLEM_NAMES}
     for problem in PROBLEM_NAMES:
@@ -187,40 +150,51 @@ def main():
                 all_data[problem][param_set][algorithm]['fronts_np'] = fronts_to_array(fronts_list)
     print("All data loaded successfully.")
 
-    # --- Step 2: Perform statistical analysis for the summary table ---
+    # Step 2: Perform statistical analysis
     print("\n--- Performing statistical analysis... ---")
     statistical_results = []
     for problem in PROBLEM_NAMES:
+        all_points_for_problem = []
         for param_set in PARAMETER_SETS:
-            # Create a temporary dict of fronts just for this scenario to find a consistent reference point
-            scenario_fronts = {alg: fronts_to_array(load_pareto_fronts(alg, problem, param_set)) for alg in ALGORITHMS}
-            all_points = [item for sublist in [fronts for fronts in scenario_fronts.values() if fronts] for item in sublist]
-            if not all_points: continue
-            ref_point_vals = np.vstack(all_points)
-            ref_point = np.max(ref_point_vals, axis=0) * 1.1
+            for algorithm in ALGORITHMS:
+                fronts_np = all_data[problem][param_set][algorithm]['fronts_np']
+                if fronts_np:
+                    all_points_for_problem.append(np.vstack(fronts_np))
+        if not all_points_for_problem: continue
+        ref_point = np.max(np.vstack(all_points_for_problem), axis=0) * 1.1
+        print(f"  - Unified Reference Point for {problem}: [{ref_point[0]:.2f}, {ref_point[1]:.2f}]")
 
+        for param_set in PARAMETER_SETS:
             for algorithm in ALGORITHMS:
                 summaries = all_data[problem][param_set][algorithm]['summaries']
                 fronts_np = all_data[problem][param_set][algorithm]['fronts_np']
                 
-                time_mean, time_std = np.mean([s['wall_clock_time_sec'] for s in summaries]), np.std([s['wall_clock_time_sec'] for s in summaries]) if summaries else (0,0)
+                time_mean, time_std = (np.mean([s['wall_clock_time_sec'] for s in summaries]), np.std([s['wall_clock_time_sec'] for s in summaries])) if summaries else (0,0)
                 
                 hv_indicator = HV(ref_point=ref_point)
                 hv_values = [hv_indicator(f) for f in fronts_np if f.size > 0]
-                hv_mean, hv_std = np.mean(hv_values), np.std(hv_values) if hv_values else (0,0)
+                hv_mean, hv_std = (np.mean(hv_values), np.std(hv_values)) if hv_values else (0,0)
+ 
+                # --- 3. CALCULATE SPACING METRIC ---
+                sp_indicator = SpacingIndicator()
+                # Spacing is only defined for fronts with more than one solution
+                sp_values = [sp_indicator(f) for f in fronts_np if f.shape[0] > 1]
+                sp_mean, sp_std = (np.mean(sp_values), np.std(sp_values)) if sp_values else (0,0)
 
+                # --- 4. ADD SPACING TO THE RESULTS DICTIONARY ---
                 statistical_results.append({
                     "Problem": problem, "Parameters": param_set, "Algorithm": algorithm,
                     "Mean Runtime (s)": time_mean, "Std Dev Runtime (s)": time_std,
-                    "Mean Hypervolume": hv_mean, "Std Dev Hypervolume": hv_std
+                    "Mean Hypervolume": hv_mean, "Std Dev Hypervolume": hv_std,
+                    "Mean Spacing": sp_mean, "Std Dev Spacing": sp_std
                 })
     print("Statistical analysis complete.")
 
-    # --- Step 3: Create the summary CSV file ---
+    # Step 3: Create the summary CSV
     if statistical_results:
         create_summary_csv(statistical_results)
 
-    # --- Step 4: Generate the comprehensive multi-front plots ---
+    # Step 4: Generate plots
     print("\n--- Generating comparison plots for each problem... ---")
     for problem in PROBLEM_NAMES:
         try:
