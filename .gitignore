@@ -10,21 +10,7 @@ ENV/
 *.pyo
 *.pyd
 __pycache__/
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
 
 # Project specific
 /data/generations
@@ -33,4 +19,5 @@ Thumbs.db
 
 # Results
 /results/
-/results_*/
+/results*/
+analysis_summary.csv
