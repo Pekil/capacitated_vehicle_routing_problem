@@ -1,21 +1,25 @@
 # Capacitated Vehicle Routing Problem (CVRP) Solver
 
-This project implements Multi-Objective Evolutionary Algorithms (MOEAs) to solve the Multi-Objective Capacitated Vehicle Routing Problem using CVRPLIB dataset instances.
+A Python implementation of NSGA-II and SPEA2 algorithms for solving the Capacitated Vehicle Routing Problem with two objectives: minimizing total distance and balancing route lengths, using CVRPLIB dataset instances.
 
-## Setup Virtual Environment
+## Prerequisites
 
-Modern Python installations require using virtual environments to avoid conflicts. Follow these steps:
+- Python 3.10 or higher
+- pip (Python package installer)
+- Git (for cloning the repository)
 
-### 1. Create Virtual Environment
+## Installation
+
+### 1. Clone the repository:
+```bash
+git clone git@github.com:Pekil/capacitated_vehicle_routing_problem.git
+cd capacitated_vehicle_routing_problem
+```
+
+### 2. Create Virtual Environment
 
 ```bash
 python3 -m venv venv
-```
-
-### 2. Activate Virtual Environment
-
-**On Linux/Mac:**
-```bash
 source venv/bin/activate
 ```
 
@@ -32,12 +36,6 @@ pip install -r requirements.txt
 
 
 ## How to Run
-
-**IMPORTANT: Always activate your virtual environment first!**
-
-```bash
-source venv/bin/activate  # Activate virtual environment
-```
 
 ### Run Multi-Objective CVRP Experiments
 
